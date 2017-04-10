@@ -1,0 +1,13 @@
+{
+  "iotronic": {
+    "board": {
+      "code": "<REGISTRATION-TOKEN>"
+    },
+    "wamp": {
+      "registration-agent": {
+        "url": "ws://<WAMP-SERVER>:<WAMP-PORT>/",
+        "realm": "<IOTRONIC-REALM>"
+      }
+    }
+  }
+}

@@ -1,0 +1,11 @@
+*.pyc
+.directory
+*.swp
+*~
+.tox/
+.idea/
+iotronic_lightningrod.egg-info
+build
+AUTHORS
+Authors
+ChangeLog

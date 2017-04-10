@@ -1,0 +1,8 @@
+{
+    "plugins": {
+        "zero": {
+            "onboot": "false",
+            "callable": "true"
+        }
+    }
+}

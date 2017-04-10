@@ -1,0 +1,73 @@
+#!/bin/ash
+
+workdir=/usr/bin
+ 
+start() {
+
+    cd $workdir
+    
+    pid=`ps www | grep "/usr/bin/python $workdir/lightning-rod" | grep -v grep | awk '{ print $1 }'`
+    
+    
+    if [ -r $pid ]; then                                                                                                           
+	    /usr/bin/python $workdir/lightning-rod &
+	    sleep 2
+	    pid=`ps www | grep "/usr/bin/python $workdir/lightning-rod" | grep -v grep | awk '{ print $1 }'`
+	    echo "PID:" $pid
+	    echo "Lightning-rod is started."                                                                                          
+    else                                                                                                                             
+	    echo "Lightning-rod is already started with PID $pid."                                                                  
+    fi    
+
+}
+ 
+stop() {
+
+    pid=`ps www | grep "/usr/bin/python $workdir/lightning-rod" | grep -v grep | awk '{ print $1 }'`
+
+    if [ -r $pid ]; then
+	  echo "Lightning-rod is already stopped!"    
+    else                                                                                                                             
+	   
+	  echo "PID:" $pid
+	  kill -9 $pid
+	  sleep 2
+	  echo "Lightning-rod stopped."
+    fi
+
+}
+
+
+status(){
+
+    pid=`ps www | grep "/usr/bin/python $workdir/lightning-rod" | grep -v grep | awk '{ print $1 }'`
+
+    if [ -r $pid ]; then
+	  echo "Lightning-rod is stopped."
+    else
+
+	  echo "PID:" $pid
+	  echo "Lightning-rod is started."
+    fi
+
+}
+file:///home/webwolf/Scrivania/Stack4Things/test_ipk/s4t-lr
+case "$1" in
+  start)
+    start
+    ;;
+  stop)
+    stop   
+    ;;
+  restart)
+    stop
+    start
+    ;;
+  status)
+    status
+    ;;
+  *)
+    echo "Usage: /etc/init.d/lightning-rod {start|stop|restart|status}"
+    exit 1
+esac
+exit 0

@@ -576,8 +576,7 @@ def wampConnect(wamp_conf):
 
             addr = str(connector.getDestination().host)
             socket.inet_pton(socket.AF_INET, addr)
-            LOG.info(" - establishing connection to "
-                     + board.agent + ": " + addr)
+            LOG.info(" - establishing connection to : " + str(addr))
 
         except socket.error as err:
             LOG.error(" - IP address validation error: " + str(err))

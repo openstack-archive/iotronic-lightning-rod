@@ -25,4 +25,4 @@ entry_points_name = \
 package_path = os.path.join(dist.location, __package__)
 
 # Iotronic home folder
-iotronic_home = "/opt/stack4things/iotronic"
+iotronic_home = "/var/lib/iotronic"

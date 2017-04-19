@@ -102,7 +102,9 @@ class Board(object):
             self.getWampAgent(self.iotronic_config)
 
         except Exception as err:
-            LOG.warning("settings.json file exception: " + str(err))
+            if str(err) != 'uuid':
+                LOG.warning("settings.json file exception: " + str(err))
+
             # STATUS REGISTERED
             try:
                 self.code = board_config['code']
@@ -118,6 +120,7 @@ class Board(object):
 
         '''
         try:
+
             self.wamp_config = config['iotronic']['wamp']['main-agent']
             LOG.info('WAMP Agent settings:')
 

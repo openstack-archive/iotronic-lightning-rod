@@ -51,7 +51,7 @@ status(){
     fi
 
 }
-file:///home/webwolf/Scrivania/Stack4Things/test_ipk/s4t-lr
+
 case "$1" in
   start)
     start

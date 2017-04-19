@@ -1,0 +1,8 @@
+Workflow+1: Fabio Verboso <fverboso@unime.it>
+Code-Review+2: Nicola Peditto <npeditto@unime.it>
+Verified+2: Jenkins
+Submitted-by: Jenkins
+Submitted-at: Wed, 19 Apr 2017 08:47:42 +0000
+Reviewed-on: https://review.openstack.org/457918
+Project: openstack/iotronic-lightning-rod
+Branch: refs/heads/master

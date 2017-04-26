@@ -593,12 +593,31 @@ class WampManager(object):
     """
 
     def __init__(self, wamp_conf):
+
         # Connection to Crossbar server.
         wampConnect(wamp_conf)
 
     def start(self):
         LOG.info(" - starting Lightning-rod WAMP server...")
         reactor.run()
+
+        """
+        # TEMPORARY ------------------------------------------------------
+        from subprocess import call
+        LOG.debug("Unmounting...")
+
+        try:
+            mountPoint = "/opt/BBB"
+            # errorCode = self.libc.umount(mountPoint, None)
+            errorCode = call(["umount", "-l", mountPoint])
+
+            LOG.debug("Unmount " + mountPoint + " result: " + str(errorCode))
+
+        except Exception as msg:
+            result = "Unmounting error:", msg
+            LOG.debug(result)
+        # ------------------------------------------------------------------
+        """
 
     def stop(self):
         LOG.info("Stopping WAMP agent server...")

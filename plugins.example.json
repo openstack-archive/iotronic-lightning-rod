@@ -1,7 +1,4 @@
 {
     "plugins": {
-        "zero": {
-            "autostart": "false"
-        }
     }
 }

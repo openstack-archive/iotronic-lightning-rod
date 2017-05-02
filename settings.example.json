@@ -1,6 +1,6 @@
 {
   "iotronic": {
-    "node": {
+    "board": {
       "code": "<REGISTRATION-TOKEN>"
     },
     "wamp": {

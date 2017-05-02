@@ -53,11 +53,15 @@ def sendRequest(url, action, headers=None, body=None, verbose=False):
 
         if verbose:
             req = json.loads(send)
-            LOG.info("\nREST REQUEST: HTTP " + str(response['status'])
-                     + " - success = " + str(req['success'])
-                     + " - " + str(req['result']['records']))
+            LOG.info("Request:\n" + str(req) + "\n")
+            LOG.info("Request response:\n" + str(response) + "\n")
+            # LOG.info("\nREST REQUEST: HTTP " + str(response['status'])
+            #         + " - success = " + str(req['success'])
+            #         + " - " + str(req['result']['records']))
 
     except Exception as err:
+        req = json.loads(send)
+        LOG.error("Request Error:\n" + str(req) + "\n")
         LOG.error("sendRequest error: " + str(err))
 
-    return send
+    return response, send

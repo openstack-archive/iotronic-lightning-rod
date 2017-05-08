@@ -693,7 +693,7 @@ class PluginManager(Module.Module):
                 w_msg = yield WM.WampError(str(err))
                 returnValue(w_msg.serialize())
 
-    def PluginReboot(self, plugin_uuid):
+    def PluginReboot(self, plugin_uuid, parameters=None):
         """To reboot an asynchronous plugin (callable = false) into the board.
 
         :return: return a response to RPC request
@@ -704,6 +704,9 @@ class PluginManager(Module.Module):
 
         LOG.info("RPC " + rpc_name + " CALLED for '"
                  + plugin_uuid + "' plugin:")
+
+        LOG.info(" - plugin restarting with parameters:")
+        LOG.info("   " + str(parameters))
 
         try:
 
@@ -721,15 +724,21 @@ class PluginManager(Module.Module):
 
                     worker = PLUGINS_THRS[plugin_uuid]
 
+                    # STOP PLUGIN----------------------------------------------
+
                     if worker.isAlive():
-                        # STOP PLUGIN------------------------------------------
+
                         LOG.info(" - Thread "
                                  + plugin_uuid + " is running, stopping...")
                         LOG.debug(" - Stopping plugin " + str(worker))
                         worker.stop()
 
+                    while worker.isAlive():
+                        pass
+
                     # Remove from plugin thread list
                     del PLUGINS_THRS[plugin_uuid]
+                    LOG.debug(" - plugin data structure cleaned!")
 
                 # START PLUGIN-------------------------------------------------
                 if os.path.exists(plugin_filename):
@@ -737,13 +746,20 @@ class PluginManager(Module.Module):
                     # Import plugin python module
                     task = imp.load_source("plugin", plugin_filename)
 
-                    if os.path.exists(plugin_params_file):
+                    if parameters is None:
 
-                        with open(plugin_params_file) as conf:
-                            plugin_params = json.load(conf)
+                        if os.path.exists(plugin_params_file):
+
+                            with open(plugin_params_file) as conf:
+                                plugin_params = json.load(conf)
+
+                        else:
+                            plugin_params = None
 
                     else:
-                        plugin_params = None
+                        plugin_params = parameters
+                        LOG.info(" - plugin restarting with parameters:")
+                        LOG.info("   " + str(plugin_params))
 
                     worker = task.Worker(
                         plugin_uuid,

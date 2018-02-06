@@ -13,10 +13,11 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+__author__ = "Nicola Peditto <npeditto@unime.it"
+
 import imp
 import inspect
 import os
-from twisted.internet.defer import inlineCallbacks
 
 from iotronic_lightningrod.config import package_path
 from iotronic_lightningrod.lightningrod import RPC_devices
@@ -39,7 +40,7 @@ def deviceWampRegister(dev_meth_list, board):
             # LOG.info(" - " + str(meth[0]))
             rpc_addr = u'iotronic.' + board.uuid + '.' + meth[0]
             # LOG.debug(" --> " + str(rpc_addr))
-            SESSION.register(inlineCallbacks(meth[1]), rpc_addr)
+            SESSION.register(meth[1], rpc_addr)
 
             LOG.info("   --> " + str(meth[0]) + " registered!")
 

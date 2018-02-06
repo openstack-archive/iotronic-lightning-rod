@@ -13,14 +13,14 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-import cPickle as pickle
-# import oslo_messaging
+__author__ = "Nicola Peditto <npeditto@unime.it"
+
+import _pickle as pickle
 
 from oslo_log import log as logging
 LOG = logging.getLogger(__name__)
 
 
-# class ObjectSerializer(oslo_messaging.NoOpSerializer):
 class ObjectSerializer(object):
     """A PluginObject-aware Serializer.
 
@@ -31,7 +31,6 @@ class ObjectSerializer(object):
     and RpcDispatcher objects.
     """
 
-    # def serialize_entity(self, context, entity):
     def serialize_entity(self, entity):
 
         dumped = pickle.dumps(entity, 0)
@@ -40,10 +39,9 @@ class ObjectSerializer(object):
 
         return dumped
 
-    # def deserialize_entity(self, context, entity):
     def deserialize_entity(self, entity):
 
-        loaded = pickle.loads(str(entity))
+        loaded = pickle.loads(str.encode(entity))
 
         # LOG.debug(" - plugin deserialized")
 

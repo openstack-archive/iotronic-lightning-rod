@@ -13,10 +13,11 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+__author__ = "Nicola Peditto <npeditto@unime.it"
 
-from autobahn.twisted.util import sleep
+import asyncio
+
 from iotronic_lightningrod.modules import Module
-from twisted.internet.defer import returnValue
 
 from oslo_log import log as logging
 LOG = logging.getLogger(__name__)
@@ -28,15 +29,15 @@ class Test(Module.Module):
 
         super(Test, self).__init__("Test", board)
 
-    def test_function(self):
+    async def test_function(self):
         import random
         s = random.uniform(0.5, 1.5)
-        yield sleep(s)
+        await asyncio.sleep(s)
         result = "DEVICE test result: TEST!"
         LOG.info(result)
-        returnValue(result)
+        return result
 
-    def add(self, x, y):
-        c = yield x + y
+    async def add(self, x, y):
+        c = await x + y
         LOG.info("DEVICE add result: " + str(c))
-        returnValue(c)
+        return c

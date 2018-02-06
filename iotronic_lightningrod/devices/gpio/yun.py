@@ -13,9 +13,12 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-from iotronic_lightningrod.devices.gpio import Gpio
+__author__ = "Nicola Peditto <npeditto@unime.it"
+
 import os
 import time
+
+from iotronic_lightningrod.devices.gpio import Gpio
 
 from oslo_log import log as logging
 LOG = logging.getLogger(__name__)

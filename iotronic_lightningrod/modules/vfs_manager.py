@@ -12,15 +12,14 @@
 #    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 #    License for the specific language governing permissions and limitations
 #    under the License.
-
 from __future__ import with_statement
+
+__author__ = "Nicola Peditto <npeditto@unime.it"
 
 import errno
 import os
 from subprocess import call
 import threading
-from twisted.internet.defer import inlineCallbacks
-from twisted.internet.defer import returnValue
 
 # Iotronic imports
 from iotronic_lightningrod.modules import Module
@@ -71,7 +70,7 @@ class VfsManager(Module.Module):
             result = "Mounting error:", msg
 
         print(result)
-        yield returnValue(result)
+        return result
 
     def unmountLocal(self, mountPoint):
 
@@ -88,7 +87,7 @@ class VfsManager(Module.Module):
             result = "Unmounting error:", msg
 
         print(result)
-        yield returnValue(result)
+        return result
 
     def mountRemote(self,
                     mountSource,
@@ -116,7 +115,7 @@ class VfsManager(Module.Module):
             result = "Mounting error:", msg
 
         print(result)
-        yield returnValue(result)
+        return result
 
     def unmountRemote(self, mountPoint):
 
@@ -133,7 +132,7 @@ class VfsManager(Module.Module):
             result = "Unmounting error:", msg
 
         print(result)
-        yield returnValue(result)
+        return result
 
 
 class MounterLocal(threading.Thread):
@@ -209,12 +208,11 @@ class MounterRemote(threading.Thread):
             LOG.error("Mounting FUSE error: " + str(msg))
 
 
-@inlineCallbacks
-def makeCall(msg=None, agent=None, session=None):
+async def makeCall(msg=None, agent=None, session=None):
     rpc_addr = str(agent) + '.stack4things.echo'
     LOG.debug("VFS - I'm calling " + rpc_addr)
     try:
-        res = yield session.call(rpc_addr, msg)
+        res = await session.call(rpc_addr, msg)
         LOG.info("NOTIFICATION " + str(res))
     except Exception as e:
         LOG.warning("NOTIFICATION error: {0}".format(e))

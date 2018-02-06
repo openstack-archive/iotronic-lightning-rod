@@ -12,30 +12,31 @@
 #    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 #    License for the specific language governing permissions and limitations
 #    under the License.
-
 from __future__ import absolute_import
+
+__author__ = "Nicola Peditto <npeditto@unime.it"
 
 from datetime import datetime
 import imp
 import inspect
 import json
 import os
-from Queue import Queue
+import queue
 import shutil
 import time
-from twisted.internet.defer import returnValue
 
-from iotronic_lightningrod.config import iotronic_home
+
 from iotronic_lightningrod.modules import Module
 from iotronic_lightningrod.plugins import PluginSerializer
 import iotronic_lightningrod.wampmessage as WM
 
-
+from oslo_config import cfg
 from oslo_log import log as logging
 LOG = logging.getLogger(__name__)
 
+CONF = cfg.CONF
 PLUGINS_THRS = {}
-PLUGINS_CONF_FILE = iotronic_home + "/plugins.json"
+PLUGINS_CONF_FILE = CONF.lightningrod_home + "/plugins.json"
 
 
 def getFuncName():
@@ -144,7 +145,8 @@ def RebootOnBootPlugins():
 
                     LOG.info(" - Rebooting plugin " + plugin_uuid)
 
-                    plugin_home = iotronic_home + "/plugins/" + plugin_uuid
+                    plugin_home = CONF.lightningrod_home + "/plugins/" \
+                        + plugin_uuid
                     plugin_filename = plugin_home + "/" + plugin_uuid + ".py"
                     plugin_params_file = \
                         plugin_home + "/" + plugin_uuid + ".json"
@@ -224,7 +226,7 @@ class PluginManager(Module.Module):
         # Reboot boot enabled plugins
         RebootOnBootPlugins()
 
-    def PluginInject(self, plugin, onboot):
+    async def PluginInject(self, plugin, onboot):
         """Plugin injection procedure into the board:
 
          1. get Plugin files
@@ -254,7 +256,8 @@ class PluginManager(Module.Module):
             loaded = ser.deserialize_entity(code)
             # LOG.debug("- plugin loaded code:\n" + loaded)
 
-            plugin_path = iotronic_home + "/plugins/" + plugin_uuid + "/"
+            plugin_path = CONF.lightningrod_home \
+                + "/plugins/" + plugin_uuid + "/"
             plugin_filename = plugin_path + plugin_uuid + ".py"
 
             # Plugin folder creation if does not exist
@@ -311,17 +314,18 @@ class PluginManager(Module.Module):
                 json.dump(plugins_conf, f, indent=4)
 
             LOG.info(" - " + message)
-            w_msg = yield WM.WampSuccess(message)
+            w_msg = await WM.WampSuccess(message)
 
         except Exception as err:
             message = "Plugin injection error: " + str(err)
             LOG.error(" - " + message)
-            w_msg = yield WM.WampError(str(err))
-            returnValue(w_msg.serialize())
+            w_msg = await WM.WampError(str(err))
 
-        returnValue(w_msg.serialize())
+            return w_msg.serialize()
 
-    def PluginStart(self, plugin_uuid, parameters=None):
+        return w_msg.serialize()
+
+    async def PluginStart(self, plugin_uuid, parameters=None):
         """To start an asynchronous plugin;
 
         the plugin will run until the PluginStop is called.
@@ -352,12 +356,12 @@ class PluginManager(Module.Module):
                     message = "ALREADY STARTED!"
                     LOG.warning(" - Plugin "
                                 + plugin_uuid + " already started!")
-                    w_msg = yield WM.WampError(message)
+                    w_msg = await WM.WampError(message)
 
                 else:
 
                     plugin_home = \
-                        iotronic_home + "/plugins/" + plugin_uuid
+                        CONF.lightningrod_home + "/plugins/" + plugin_uuid
                     plugin_filename = \
                         plugin_home + "/" + plugin_uuid + ".py"
                     plugin_params_file = \
@@ -404,32 +408,33 @@ class PluginManager(Module.Module):
 
                         response = "STARTED"
                         LOG.info(" - " + worker.complete(rpc_name, response))
-                        w_msg = yield WM.WampSuccess(response)
+                        w_msg = await WM.WampSuccess(response)
 
                     else:
                         message = \
                             rpc_name + " - ERROR " \
                             + plugin_filename + " does not exist!"
                         LOG.error(" - " + message)
-                        w_msg = yield WM.WampError(message)
+                        w_msg = await WM.WampError(message)
 
             else:
                 message = "Plugin " + plugin_uuid \
                           + " does not exist in this board!"
                 LOG.warning(" - " + message)
-                w_msg = yield WM.WampError(message)
+                w_msg = await WM.WampError(message)
 
         except Exception as err:
             message = \
                 rpc_name + " - ERROR - plugin (" + plugin_uuid + ") - " \
                 + str(err)
             LOG.error(" - " + message)
-            w_msg = yield WM.WampError(str(err))
-            returnValue(w_msg.serialize())
+            w_msg = await WM.WampError(str(err))
 
-        returnValue(w_msg.serialize())
+            return w_msg.serialize()
 
-    def PluginStop(self, plugin_uuid, parameters=None):
+        return w_msg.serialize()
+
+    async def PluginStop(self, plugin_uuid, parameters=None):
         """To stop an asynchronous plugin
 
         :param plugin_uuid: ID of plufin to stop
@@ -459,13 +464,13 @@ class PluginManager(Module.Module):
                     if 'delay' in parameters:
                         time.sleep(delay)
 
-                    yield worker.stop()
+                    await worker.stop()
 
                     del PLUGINS_THRS[plugin_uuid]
 
                     message = "STOPPED"
                     LOG.info(" - " + worker.complete(rpc_name, message))
-                    w_msg = yield WM.WampSuccess(message)
+                    w_msg = await WM.WampSuccess(message)
 
                 else:
                     message = \
@@ -473,26 +478,27 @@ class PluginManager(Module.Module):
                         + " - ERROR - plugin (" + plugin_uuid \
                         + ") is instantiated but is not running anymore!"
                     LOG.error(" - " + message)
-                    w_msg = yield WM.WampError(message)
+                    w_msg = await WM.WampError(message)
 
             else:
                 message = \
                     rpc_name + " - WARNING " \
                     + plugin_uuid + "  is not running!"
                 LOG.warning(" - " + message)
-                w_msg = yield WM.WampWarning(message)
+                w_msg = await WM.WampWarning(message)
 
         except Exception as err:
             message = \
                 rpc_name \
                 + " - ERROR - plugin (" + plugin_uuid + ") - " + str(err)
             LOG.error(" - " + message)
-            w_msg = yield WM.WampError(str(err))
-            returnValue(w_msg.serialize())
+            w_msg = await WM.WampError(str(err))
 
-        returnValue(w_msg.serialize())
+            return w_msg.serialize()
 
-    def PluginCall(self, plugin_uuid, parameters=None):
+        return w_msg.serialize()
+
+    async def PluginCall(self, plugin_uuid, parameters=None):
         """To execute a synchronous plugin into the board
 
         :param plugin_uuid:
@@ -512,11 +518,12 @@ class PluginManager(Module.Module):
 
                 message = "Plugin " + plugin_uuid + " already started!"
                 LOG.warning(" - " + message)
-                w_msg = yield WM.WampWarning(message)
+                w_msg = WM.WampWarning(message)
 
             else:
 
-                plugin_home = iotronic_home + "/plugins/" + plugin_uuid
+                plugin_home = CONF.lightningrod_home \
+                    + "/plugins/" + plugin_uuid
                 plugin_filename = plugin_home + "/" + plugin_uuid + ".py"
                 plugin_params_file = plugin_home + "/" + plugin_uuid + ".json"
 
@@ -532,14 +539,15 @@ class PluginManager(Module.Module):
 
                         LOG.info(" - Plugin " + plugin_uuid + " imported!")
 
-                        q_result = Queue()
+                        q_result = queue.Queue()
 
                     except Exception as err:
                         message = "Error importing plugin " \
                                   + plugin_filename + ": " + str(err)
                         LOG.error(" - " + message)
-                        w_msg = yield WM.WampError(str(err))
-                        returnValue(w_msg.serialize())
+                        w_msg = WM.WampError(str(err))
+
+                        return w_msg.serialize()
 
                     try:
 
@@ -575,33 +583,35 @@ class PluginManager(Module.Module):
                         response = q_result.get()
 
                         LOG.info(" - " + worker.complete(rpc_name, response))
-                        w_msg = yield WM.WampSuccess(response)
+                        w_msg = WM.WampSuccess(response)
 
                     except Exception as err:
                         message = "Error spawning plugin " \
                                   + plugin_filename + ": " + str(err)
                         LOG.error(" - " + message)
-                        w_msg = yield WM.WampError(str(err))
-                        returnValue(w_msg.serialize())
+                        w_msg = WM.WampError(str(err))
+
+                        return w_msg.serialize()
 
                 else:
                     message = \
                         rpc_name \
                         + " - ERROR " + plugin_filename + " does not exist!"
                     LOG.error(" - " + message)
-                    w_msg = yield WM.WampError(message)
+                    w_msg = WM.WampError(message)
 
         except Exception as err:
             message = \
                 rpc_name \
                 + " - ERROR - plugin (" + plugin_uuid + ") - " + str(err)
             LOG.error(" - " + message)
-            w_msg = yield WM.WampError(str(err))
-            returnValue(w_msg.serialize())
+            w_msg = WM.WampError(str(err))
 
-        returnValue(w_msg.serialize())
+            return w_msg.serialize()
 
-    def PluginRemove(self, plugin_uuid):
+        return w_msg.serialize()
+
+    async def PluginRemove(self, plugin_uuid):
         """To remove a plugin from the board
 
         :param plugin_uuid:
@@ -613,15 +623,16 @@ class PluginManager(Module.Module):
 
         LOG.info("RPC " + rpc_name + " for plugin " + plugin_uuid)
 
-        plugin_path = iotronic_home + "/plugins/" + plugin_uuid + "/"
+        plugin_path = CONF.lightningrod_home + "/plugins/" + plugin_uuid + "/"
 
         if os.path.exists(plugin_path) is False \
                 or os.path.exists(PLUGINS_CONF_FILE) is False:
 
             message = "Plugin paths or files do not exist!"
             LOG.error(message)
-            w_msg = yield WM.WampError(message)
-            returnValue(w_msg.serialize())
+            w_msg = await WM.WampError(message)
+
+            return w_msg.serialize()
 
         else:
 
@@ -641,8 +652,9 @@ class PluginManager(Module.Module):
                     message = "Removing plugin's files error in " \
                               + plugin_path + ": " + str(err)
                     LOG.error(" - " + message)
-                    w_msg = yield WM.WampError(str(err))
-                    returnValue(w_msg.serialize())
+                    w_msg = await WM.WampError(str(err))
+
+                    return w_msg.serialize()
 
                 # Remove from plugins.json file its configuration
                 try:
@@ -678,22 +690,25 @@ class PluginManager(Module.Module):
                                   + plugin_uuid + " already removed!"
                         LOG.warning(" - " + message)
 
-                    w_msg = yield WM.WampSuccess(message)
-                    returnValue(w_msg.serialize())
+                    w_msg = await WM.WampSuccess(message)
+
+                    return w_msg.serialize()
 
                 except Exception as err:
                     message = "Updating plugins.json error: " + str(err)
                     LOG.error(" - " + message)
-                    w_msg = yield WM.WampError(str(err))
-                    returnValue(w_msg.serialize())
+                    w_msg = await WM.WampError(str(err))
+
+                    return w_msg.serialize()
 
             except Exception as err:
                 message = "Plugin removing error: {0}".format(err)
                 LOG.error(" - " + message)
-                w_msg = yield WM.WampError(str(err))
-                returnValue(w_msg.serialize())
+                w_msg = await WM.WampError(str(err))
 
-    def PluginReboot(self, plugin_uuid, parameters=None):
+                return w_msg.serialize()
+
+    async def PluginReboot(self, plugin_uuid, parameters=None):
         """To reboot an asynchronous plugin (callable = false) into the board.
 
         :return: return a response to RPC request
@@ -710,7 +725,7 @@ class PluginManager(Module.Module):
 
         try:
 
-            plugin_home = iotronic_home + "/plugins/" + plugin_uuid
+            plugin_home = CONF.lightningrod_home + "/plugins/" + plugin_uuid
             plugin_filename = plugin_home + "/" + plugin_uuid + ".py"
             plugin_params_file = plugin_home + "/" + plugin_uuid + ".json"
 
@@ -774,23 +789,24 @@ class PluginManager(Module.Module):
 
                     message = "REBOOTED"
                     LOG.info(" - " + worker.complete(rpc_name, message))
-                    w_msg = yield WM.WampSuccess(message)
+                    w_msg = await WM.WampSuccess(message)
 
                 else:
                     message = "ERROR '" + plugin_filename + "' does not exist!"
                     LOG.error(" - " + message)
-                    w_msg = yield WM.WampError(message)
+                    w_msg = await WM.WampError(message)
 
         except Exception as err:
             message = "Error rebooting plugin '" \
                       + plugin_uuid + "': " + str(err)
             LOG.error(" - " + message)
-            w_msg = yield WM.WampError(str(err))
-            returnValue(w_msg.serialize())
+            w_msg = await WM.WampError(str(err))
 
-        returnValue(w_msg.serialize())
+            return w_msg.serialize()
 
-    def PluginStatus(self, plugin_uuid):
+        return w_msg.serialize()
+
+    async def PluginStatus(self, plugin_uuid):
         """Check status thread plugin
 
         :param plugin_uuid:
@@ -814,20 +830,21 @@ class PluginManager(Module.Module):
                     result = "DEAD"
 
                 LOG.info(" - " + worker.complete(rpc_name, result))
-                w_msg = yield WM.WampSuccess(result)
+                w_msg = await WM.WampSuccess(result)
 
             else:
                 result = "DEAD"
                 LOG.info(" - " + rpc_name + " result for "
                          + plugin_uuid + ": " + result)
-                w_msg = yield WM.WampSuccess(result)
+                w_msg = await WM.WampSuccess(result)
 
         except Exception as err:
             message = \
                 rpc_name \
                 + " - ERROR - plugin (" + plugin_uuid + ") - " + str(err)
             LOG.error(" - " + message)
-            w_msg = yield WM.WampError(str(err))
-            returnValue(w_msg.serialize())
+            w_msg = await WM.WampError(str(err))
 
-        returnValue(w_msg.serialize())
+            return w_msg.serialize()
+
+        return w_msg.serialize()

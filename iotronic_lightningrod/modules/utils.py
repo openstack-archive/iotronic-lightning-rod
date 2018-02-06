@@ -13,21 +13,20 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+__author__ = "Nicola Peditto <npeditto@unime.it"
 
-from autobahn.twisted.util import sleep
-from iotronic_lightningrod.config import entry_points_name
-from iotronic_lightningrod.modules import Module
+import asyncio
 import pkg_resources
 from six import moves
 from stevedore import extension
 import sys
-from twisted.internet.defer import returnValue
+
+from iotronic_lightningrod.config import entry_points_name
+from iotronic_lightningrod.lightningrod import SESSION
+from iotronic_lightningrod.modules import Module
 
 from oslo_log import log as logging
-
 LOG = logging.getLogger(__name__)
-
-from iotronic_lightningrod.lightningrod import SESSION
 
 
 def refresh_stevedore(namespace=None):
@@ -62,17 +61,17 @@ class Utility(Module.Module):
     def finalize(self):
         pass
 
-    def hello(self, client_name, message):
+    async def hello(self, client_name, message):
         import random
         s = random.uniform(0.5, 3.0)
-        yield sleep(s)
+        await asyncio.sleep(s)
         result = "Hello by board to Conductor " + client_name + \
                  " that said me " + message + " - Time: " + '%.2f' % s
         LOG.info("DEVICE hello result: " + str(result))
 
-        returnValue(result)
+        return result
 
-    def plug_and_play(self, new_module, new_class):
+    async def plug_and_play(self, new_module, new_class):
         LOG.info("LR modules loaded:\n\t" + new_module)
 
         # Updating entry_points
@@ -92,28 +91,28 @@ class Utility(Module.Module):
         for ep in pkg_resources.iter_entry_points(group='s4t.modules'):
             named_objects.update({ep.name: ep.load()})
 
-        yield named_objects
+        await named_objects
 
         SESSION.disconnect()
 
-        returnValue(str(named_objects))
+        return str(named_objects)
 
-    def changeConf(self, conf):
+    async def changeConf(self, conf):
 
-        yield self.board.getConf(conf)
+        await self.board.getConf(conf)
 
         self.board.setUpdateTime()
 
         result = "Board configuration changed!"
         LOG.info("PROVISIONING RESULT: " + str(result))
 
-        returnValue(result)
+        return result
 
-    def destroyNode(self, conf):
+    async def destroyNode(self, conf):
 
-        yield self.board.setConf(conf)
+        await self.board.setConf(conf)
 
         result = "Board configuration cleaned!"
         LOG.info("DESTROY RESULT: " + str(result))
 
-        returnValue(result)
+        return result

@@ -13,8 +13,9 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+__author__ = "Nicola Peditto <npeditto@unime.it"
+
 import inspect
-from twisted.internet.defer import returnValue
 
 from iotronic_lightningrod.devices import Device
 from iotronic_lightningrod.devices.gpio import server
@@ -46,10 +47,10 @@ class System(Device.Device):
         """
         pass
 
-    def testRPC(self):
+    async def testRPC(self):
         rpc_name = whoami()
         LOG.info("RPC " + rpc_name + " CALLED...")
-        yield makeNothing()
+        await makeNothing()
         result = " - " + rpc_name + " result: testRPC is working!!!\n"
         LOG.info(result)
-        returnValue(result)
+        return result

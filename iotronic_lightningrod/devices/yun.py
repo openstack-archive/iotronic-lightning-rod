@@ -13,15 +13,15 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-# Linino references: http://wiki.linino.org/doku.php?id=wiki:lininoio_sysfs
-
-from twisted.internet.defer import returnValue
+__author__ = "Nicola Peditto <npeditto@unime.it"
 
 from iotronic_lightningrod.devices import Device
 from iotronic_lightningrod.devices.gpio import yun
 
 from oslo_log import log as logging
 LOG = logging.getLogger(__name__)
+
+# Linino references: http://wiki.linino.org/doku.php?id=wiki:lininoio_sysfs
 
 
 class System(Device.Device):
@@ -41,25 +41,25 @@ class System(Device.Device):
         """
         pass
 
-    def testLED(self):
+    async def testLED(self):
         LOG.info(" - testLED CALLED...")
 
-        yield self.gpio.blinkLed()
+        await self.gpio.blinkLed()
 
         result = "testLED: LED blinking!\n"
         LOG.info(result)
-        returnValue(result)
+        return result
 
-    def setGPIOs(self, Dpin, direction, value):
+    async def setGPIOs(self, Dpin, direction, value):
 
         LOG.info(" - setGPIOs CALLED... digital pin " + Dpin
                  + " (GPIO n. " + self.gpio.MAPPING[Dpin] + ")")
 
-        result = yield self.gpio._setGPIOs(Dpin, direction, value)
+        result = await self.gpio._setGPIOs(Dpin, direction, value)
         LOG.info(result)
-        returnValue(result)
+        return result
 
-    def readVoltage(self, Apin):
+    async def readVoltage(self, Apin):
         """To read the voltage applied on the pin A0,A1,A2,A3,A4,A5
 
         """
@@ -67,6 +67,6 @@ class System(Device.Device):
 
         voltage = self.gpio._readVoltage(Apin)
 
-        result = yield "read voltage for " + Apin + " pin: " + voltage
+        result = await "read voltage for " + Apin + " pin: " + voltage
         LOG.info(result)
-        returnValue(result)
+        return result

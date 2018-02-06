@@ -13,17 +13,19 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+__author__ = "Nicola Peditto <npeditto@unime.it"
+
 from datetime import datetime
-# from dateutil.tz import tzlocal
 import json
 import os
 
-from iotronic_lightningrod.config import iotronic_home
-
+from oslo_config import cfg
 from oslo_log import log as logging
 LOG = logging.getLogger(__name__)
 
-SETTINGS = iotronic_home + '/settings.json'
+CONF = cfg.CONF
+
+SETTINGS = '/etc/iotronic/settings.json'
 
 
 class Board(object):
@@ -73,6 +75,9 @@ class Board(object):
         '''This method gets and sets the board attributes from the conf file.
 
         '''
+
+        LOG.info("Lightning-rod home:")
+        LOG.info(" - " + CONF.lightningrod_home)
 
         # Load all settings.json file
         self.iotronic_config = self.loadConf()

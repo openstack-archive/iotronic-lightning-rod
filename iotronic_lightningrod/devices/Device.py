@@ -13,7 +13,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-__author__ = "MDSLAB Team"
+__author__ = "Nicola Peditto <npeditto@unime.it"
 
 import abc
 import six

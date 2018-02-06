@@ -13,6 +13,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+__author__ = "Nicola Peditto <npeditto@unime.it"
 
 import os
 import pkg_resources
@@ -23,6 +24,3 @@ entry_points_name = \
 
 # Iotronic python package folder
 package_path = os.path.join(dist.location, __package__)
-
-# Iotronic home folder
-iotronic_home = "/var/lib/iotronic"

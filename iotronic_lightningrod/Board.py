@@ -43,6 +43,7 @@ class Board(object):
         self.mobile = None
         self.session = None
         self.session_id = None
+        self.agent_url = None
 
         self.location = {}
 
@@ -141,6 +142,7 @@ class Board(object):
                 )
                 os._exit(1)
 
+        # self.agent_url = str(self.wamp_config['url'])
         LOG.info(' - agent: ' + str(self.agent))
         LOG.info(' - url: ' + str(self.wamp_config['url']))
         LOG.info(' - realm: ' + str(self.wamp_config['realm']))

@@ -16,6 +16,7 @@
 __author__ = "Nicola Peditto <npeditto@unime.it"
 
 import asyncio
+import inspect
 import pkg_resources
 from six import moves
 from stevedore import extension
@@ -25,8 +26,13 @@ from iotronic_lightningrod.config import entry_points_name
 from iotronic_lightningrod.lightningrod import SESSION
 from iotronic_lightningrod.modules import Module
 
+
 from oslo_log import log as logging
 LOG = logging.getLogger(__name__)
+
+
+def getFuncName():
+    return inspect.stack()[1][3]
 
 
 def refresh_stevedore(namespace=None):

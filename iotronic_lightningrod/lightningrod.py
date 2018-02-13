@@ -601,6 +601,24 @@ class WampManager(object):
         component.start(loop)
         loop.run_forever()
 
+        """
+        # TEMPORARY ------------------------------------------------------
+        from subprocess import call
+        LOG.debug("Unmounting...")
+
+        try:
+            mountPoint = "/opt/BBB"
+            # errorCode = self.libc.umount(mountPoint, None)
+            errorCode = call(["umount", "-l", mountPoint])
+
+            LOG.debug("Unmount " + mountPoint + " result: " + str(errorCode))
+
+        except Exception as msg:
+            result = "Unmounting error:", msg
+            LOG.debug(result)
+        # ------------------------------------------------------------------
+        """
+
     def stop(self):
         LOG.info("Stopping WAMP agent server...")
         # Canceling pending tasks and stopping the loop

@@ -11,7 +11,7 @@ Install requirements
 
 ::
 
-    pip install oslo-config oslo_log twisted autobahn httplib2
+    pip install oslo.config oslo.log asyncio autobahn httplib2 psutil six
 
 Set up environment:
 ~~~~~~~~~~~~~~~~~~~
@@ -44,6 +44,7 @@ Deployment
     cp etc/iotronic/iotronic.conf  /etc/iotronic/
     cp settings.example.json /var/lib/iotronic/settings.json
     cp plugins.example.json /var/lib/iotronic/plugins.json
+    cp services.example.json /var/lib/iotronic/services.json
     cp etc/systemd/system/s4t-lightning-rod.service /etc/systemd/system/lightning-rod.service
     chmod +x /etc/systemd/system/lightning-rod.service
     systemctl daemon-reload

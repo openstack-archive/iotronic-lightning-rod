@@ -29,22 +29,6 @@ from oslo_log import log as logging
 LOG = logging.getLogger(__name__)
 
 
-def deviceWampRegister(dev_meth_list, board):
-
-    LOG.info(" - " + str(board.type).capitalize()
-             + " device registering RPCs:")
-
-    for meth in dev_meth_list:
-
-        if (meth[0] != "__init__") & (meth[0] != "finalize"):
-            # LOG.info(" - " + str(meth[0]))
-            rpc_addr = u'iotronic.' + board.uuid + '.' + meth[0]
-            # LOG.debug(" --> " + str(rpc_addr))
-            SESSION.register(meth[1], rpc_addr)
-
-            LOG.info("   --> " + str(meth[0]) + " registered!")
-
-
 class DeviceManager(Module.Module):
 
     def __init__(self, board, session):
@@ -71,7 +55,7 @@ class DeviceManager(Module.Module):
 
             RPC_devices[device_type] = dev_meth_list
 
-            deviceWampRegister(dev_meth_list, board)
+            self._deviceWampRegister(dev_meth_list, board)
 
             board.device = device
 
@@ -80,3 +64,21 @@ class DeviceManager(Module.Module):
 
     def finalize(self):
         pass
+
+    def restore(self):
+        pass
+
+    def _deviceWampRegister(self, dev_meth_list, board):
+
+        LOG.info(" - " + str(board.type).capitalize()
+                 + " device registering RPCs:")
+
+        for meth in dev_meth_list:
+
+            if (meth[0] != "__init__") & (meth[0] != "finalize"):
+                # LOG.info(" - " + str(meth[0]))
+                rpc_addr = u'iotronic.' + board.uuid + '.' + meth[0]
+                # LOG.debug(" --> " + str(rpc_addr))
+                SESSION.register(meth[1], rpc_addr)
+
+                LOG.info("   --> " + str(meth[0]) + " registered!")

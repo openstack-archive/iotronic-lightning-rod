@@ -57,6 +57,9 @@ class VfsManager(Module.Module):
     def finalize(self):
         pass
 
+    def restore(self):
+        pass
+
     def mountLocal(self, mountSource, mountPoint):
 
         try:

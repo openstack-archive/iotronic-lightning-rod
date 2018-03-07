@@ -1,8 +1,7 @@
 IoTronic Lightning-rod installation guide for Arduino YUN
 =========================================================
 
-We tested this procedure on a Arduino YUN board with OpenWRT LininoIO
-image.
+We tested this procedure on a Arduino YUN board with OpenWRT LininoIO image.
 
 Install from source code
 ------------------------
@@ -25,27 +24,12 @@ Install dependencies
 ::
 
     opkg install git bzip2 python-netifaces
-    pip install --no-cache-dir zope.interface pyserial Babel oslo.config oslo.log
+    pip install --no-cache-dir zope.interface pyserial Babel oslo.config
+    oslo.log
     easy_install httplib2
 
 Install Autobahn:
 '''''''''''''''''
-
-::
-
-    # Install Twisted:
-    wget --no-check-certificate https://pypi.python.org/packages/source/T/Twisted/Twisted-14.0.2.tar.bz2
-    bzip2 -d Twisted-14.0.2.tar.bz2
-    tar -xvf Twisted-14.0.2.tar
-    cd Twisted-14.0.2/
-    vi setup.py
-
-    comment line 63:
-        #conditionalExtensions=getExtensions(),
-
-    python setup.py install
-    cd /opt/
-    rm -rf /opt/Twisted-14.0.2*
 
 ::
 
@@ -82,6 +66,7 @@ Deployment
     cp etc/iotronic/iotronic.conf  /etc/iotronic/
     cp settings.example.json /var/lib/iotronic/settings.json
     cp plugins.example.json /var/lib/iotronic/plugins.json
+    cp services.example.json /var/lib/iotronic/services.json
     cp etc/init.d/lightning-rod /etc/init.d/lightning-rod
     chmod +x /etc/init.d/lightning-rod
     touch /var/log/iotronic/lightning-rod.log

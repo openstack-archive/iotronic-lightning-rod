@@ -67,6 +67,9 @@ class Utility(Module.Module):
     def finalize(self):
         pass
 
+    def restore(self):
+        pass
+
     async def hello(self, client_name, message):
         import random
         s = random.uniform(0.5, 3.0)

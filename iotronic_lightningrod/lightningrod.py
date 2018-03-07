@@ -66,6 +66,9 @@ txaio.start_logging(level="info")
 RUNNER = None
 connected = False
 
+global MODULES
+MODULES = {}
+
 
 def moduleReloadInfo(session):
     """This function is used in the reconnection stage to register
@@ -76,18 +79,22 @@ def moduleReloadInfo(session):
 
     """
 
-    LOG.info("Modules reloading after WAMP recovery...")
+    LOG.info("\n\nModules reloading after WAMP recovery...\n\n")
 
     try:
 
-        # Register RPCs for each Lightning-rod module
-        for mod in RPC:
-            LOG.info("- Reloading module RPcs for " + str(mod))
-            moduleWampRegister(session, RPC[mod])
+        # Call module restore procedures and
+        # register RPCs for each Lightning-rod module
+        for mod_name in MODULES:
+            LOG.info("- Registering RPCs for module " + str(mod_name))
+            moduleWampRegister(session, RPC[mod_name])
+
+            LOG.info("- Restoring module " + str(mod_name))
+            MODULES[mod_name].restore()
 
         # Register RPCs for the device
         for dev in RPC_devices:
-            LOG.info("- Reloading device RPCs for " + str(dev))
+            LOG.info("- Registering RPCs for device " + str(dev))
             moduleWampRegister(session, RPC_devices[dev])
 
     except Exception as err:
@@ -110,13 +117,15 @@ def moduleWampRegister(session, meth_list):
     else:
 
         for meth in meth_list:
-            # We don't considere the __init__ and finalize methods
-            if (meth[0] != "__init__") & (meth[0] != "finalize"):
+            # We don't considere the "__init__", "finalize" and
+            # "restore" methods
+            if (meth[0] != "__init__") & (meth[0] != "finalize") \
+                    & (meth[0] != "restore"):
                 rpc_addr = u'iotronic.' + board.uuid + '.' + meth[0]
 
-                session.register(meth[1], rpc_addr)
-
-                LOG.info("   --> " + str(meth[0]))
+                if not meth[0].startswith('_'):
+                    session.register(meth[1], rpc_addr)
+                    LOG.info("   --> " + str(meth[0]))
 
 
 def modulesLoader(session):
@@ -158,13 +167,16 @@ def modulesLoader(session):
             else:
                 mod = ext.plugin(board, session)
 
+                global MODULES
+                MODULES[mod.name] = mod
+
                 # Methods list for each module
                 meth_list = inspect.getmembers(mod, predicate=inspect.ismethod)
 
                 global RPC
                 RPC[mod.name] = meth_list
 
-                if len(meth_list) == 2:
+                if len(meth_list) == 3:
                     # there are at least two methods for each module:
                     # "__init__" and "finalize"
 
@@ -222,8 +234,7 @@ async def IotronicLogin(board, session, details):
                 modulesLoader(session)
 
             except Exception as e:
-                LOG.warning("WARNING - Could not register procedures: "
-                            + str(e))
+                LOG.warning("WARNING - Could not load modules: " + str(e))
 
             # Reset flag to False
             # reconnection = False
@@ -257,10 +268,10 @@ def wampConnect(wamp_conf):
 
     try:
 
-        LOG.info("WAMP status:" +
+        LOG.info("WAMP status @ boot:" +
                  "\n- board = " + str(board.status) +
                  "\n- reconnection = " + str(reconnection) +
-                 "\n- connection = " + str(connected)
+                 "\n- connected = " + str(connected)
                  )
 
         # LR creates the Autobahn Asyncio Component that points to the
@@ -406,10 +417,10 @@ def wampConnect(wamp_conf):
                         LOG.info("\n\n\nBoard is becoming operative...\n\n\n")
                         board.updateStatus("operative")
                         board.loadSettings()
-                        LOG.info("WAMP status:" +
+                        LOG.info("WAMP status @ firt connection:" +
                                  "\n- board = " + str(board.status) +
                                  "\n- reconnection = " + str(reconnection) +
-                                 "\n- connection = " + str(connected)
+                                 "\n- connected = " + str(connected)
                                  )
                         await IotronicLogin(board, session, details)
 
@@ -471,7 +482,7 @@ def wampConnect(wamp_conf):
 
                         except Exception as e:
                             LOG.warning(
-                                "WARNING - Could not register procedures: "
+                                "WARNING - Could not reload modules: "
                                 + str(e))
                             Bye()
 
@@ -481,7 +492,7 @@ def wampConnect(wamp_conf):
                         Bye()
 
                 except exception.ApplicationError as e:
-                    LOG.error("IoTronic connection error: " + str(e))
+                    LOG.error("IoTronic connection error:\n" + str(e))
                     # Iotronic is offline the board can not call
                     # the "stack4things.connection" RPC.
                     # The board will disconnect from WAMP agent and retry later
@@ -517,10 +528,10 @@ def wampConnect(wamp_conf):
 
             global reconnection
 
-            LOG.info("WAMP status:" +
+            LOG.info("WAMP status on disconnect:" +
                      "\n- board = " + str(board.status) +
                      "\n- reconnection = " + str(reconnection) +
-                     "\n- connection = " + str(connected)
+                     "\n- connected = " + str(connected)
                      )
 
             if board.status == "operative" and reconnection is False:
@@ -579,7 +590,7 @@ def wampConnect(wamp_conf):
                 LOG.error("Reconnection wrong status!")
 
     except Exception as err:
-        LOG.error(" - URI validation error: " + str(err))
+        LOG.error(" - WAMP connection error: " + str(err))
         Bye()
 
 

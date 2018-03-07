@@ -28,8 +28,6 @@ class Module(object):
 
     """
 
-    # __metaclass__ = abc.ABCMeta
-
     def __init__(self, name, board):
 
         self.name = name
@@ -39,4 +37,8 @@ class Module(object):
 
     @abc.abstractmethod
     def finalize(self):
+        pass
+
+    @abc.abstractmethod
+    def restore(self):
         pass

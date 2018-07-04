@@ -29,6 +29,7 @@ import inspect
 import os
 import pkg_resources
 import signal
+import ssl
 from stevedore import extension
 import sys
 
@@ -47,6 +48,11 @@ lr_opts = [
     cfg.StrOpt('lightningrod_home',
                default='/var/lib/iotronic',
                help=('Lightning Home Data')),
+    cfg.BoolOpt('skip_cert_verify',
+                default=True,
+                help=('Flag for skipping the verification of the server cert '
+                      '(for the auto-signed ones)')),
+
 ]
 
 CONF = cfg.CONF
@@ -274,11 +280,36 @@ def wampConnect(wamp_conf):
                  "\n- connected = " + str(connected)
                  )
 
+        wamp_transport = wamp_conf['url']
+        wurl_list = wamp_transport.split(':')
+        is_wss = False
+
+        if wurl_list[0] == "wss":
+            is_wss = True
+        whost = wurl_list[1].replace('/', '')
+        wport = int(wurl_list[2].replace('/', ''))
+
+        if is_wss and CONF.skip_cert_verify:
+            ctx = ssl.create_default_context()
+            ctx.check_hostname = False
+            ctx.verify_mode = ssl.CERT_NONE
+            wamp_transport = [
+                {
+                    "url": wamp_transport,
+                    "endpoint": {
+                        "type": "tcp",
+                        "host": whost,
+                        "port": wport,
+                        "tls": ctx
+                    },
+                },
+            ]
+
         # LR creates the Autobahn Asyncio Component that points to the
         # WAMP Agent (main/registration agent)
         global component
         component = Component(
-            transports=wamp_conf['url'],
+            transports=wamp_transport,
             realm=wamp_conf['realm']
         )
 

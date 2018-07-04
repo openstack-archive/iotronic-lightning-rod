@@ -41,8 +41,19 @@ class ServiceManager(Module.Module):
 
     def __init__(self, board, session):
         super(ServiceManager, self).__init__("ServiceManager", board)
-        self.url_ip = urlparse(board.wamp_config["url"])[1].split(':')[0]
-        self.wagent_url = "ws://" + self.url_ip + ":8080"
+
+        self.wstun_ip = urlparse(board.wamp_config["url"])[1].split(':')[0]
+        self.wstun_port = "8080"
+
+        is_wss = False
+        wurl_list = board.wamp_config["url"].split(':')
+        if wurl_list[0] == "wss":
+            is_wss = True
+
+        if is_wss:
+            self.wstun_url = "wss://" + self.wstun_ip + ":" + self.wstun_port
+        else:
+            self.wstun_url = "ws://" + self.wstun_ip + ":" + self.wstun_port
 
     def finalize(self):
         LOG.info("Cloud service tunnels to initialization:")
@@ -207,7 +218,7 @@ class ServiceManager(Module.Module):
 
         try:
             wstun = subprocess.Popen(
-                ['/usr/bin/wstun', opt_reverse, self.wagent_url],
+                ['/usr/bin/wstun', opt_reverse, self.wstun_url],
                 stdout=subprocess.PIPE
             )
         except Exception as err:
@@ -284,7 +295,7 @@ class ServiceManager(Module.Module):
 
                 message = "Cloud service '" + str(service_name) \
                           + "' exposed on port " \
-                          + str(public_port) + " on " + self.url_ip
+                          + str(public_port) + " on " + self.wstun_ip
 
                 LOG.info(" - " + message + " with PID " + str(service_pid))
 
@@ -423,7 +434,7 @@ class ServiceManager(Module.Module):
 
                     message = "service " + str(service_name) \
                               + " restored on port " \
-                              + str(public_port) + " on " + self.url_ip
+                              + str(public_port) + " on " + self.wstun_ip
                     LOG.info(" - " + message + " with PID " + str(service_pid))
 
                     w_msg = WM.WampSuccess(message)
@@ -468,7 +479,7 @@ class ServiceManager(Module.Module):
 
                 message = "service " + str(service_name) \
                           + " restored on port " \
-                          + str(public_port) + " on " + self.url_ip
+                          + str(public_port) + " on " + self.wstun_ip
                 LOG.info(" - " + message + " with PID " + str(service_pid))
 
                 w_msg = WM.WampSuccess(message)

@@ -11,3 +11,4 @@ Authors
 ChangeLog
 *.md
 .eggs
+dist

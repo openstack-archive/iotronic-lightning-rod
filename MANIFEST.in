@@ -1,6 +1,16 @@
+include etc/iotronic/iotronic.conf
+include templates/settings.example.json
+include templates/plugins.example.json
+include templates/services.example.json
+include etc/systemd/system/s4t-lightning-rod.service
+include etc/logrotate.d/lightning-rod.log
+include scripts/install_lr.py
+include scripts/configure_lr.py
+
 include AUTHORS
 include ChangeLog
 exclude .gitignore
 exclude .gitreview
 
 global-exclude *.pyc
+

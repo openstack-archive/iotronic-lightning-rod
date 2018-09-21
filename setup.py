@@ -27,5 +27,21 @@ except ImportError:
 setuptools.setup(
     setup_requires=['pbr>=1.8'],
     pbr=True,
-
+    include_package_data=True,
+    data_files=[
+        ('/iotronic_lightningrod/etc/iotronic',
+         ['etc/iotronic/iotronic.conf']),
+        ('/iotronic_lightningrod/scripts', ['scripts/install_lr.py']),
+        ('/iotronic_lightningrod/scripts', ['scripts/configure_lr.py']),
+        ('/iotronic_lightningrod/templates',
+         ['templates/settings.example.json']),
+        ('/iotronic_lightningrod/templates',
+         ['templates/plugins.example.json']),
+        ('/iotronic_lightningrod/templates',
+         ['templates/services.example.json']),
+        ('/iotronic_lightningrod/etc/logrotate.d',
+         ['etc/logrotate.d/lightning-rod.log']),
+        ('/iotronic_lightningrod/etc/systemd/system/',
+         ['etc/systemd/system/s4t-lightning-rod.service']),
+    ],
 )

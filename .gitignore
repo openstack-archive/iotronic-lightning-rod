@@ -12,3 +12,4 @@ ChangeLog
 *.md
 .eggs
 dist
+__pycache__

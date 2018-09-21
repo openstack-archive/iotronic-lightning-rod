@@ -1,3 +1,5 @@
+#!/usr/bin/python3
+
 # Copyright 2017 MDSLAB - University of Messina
 # All Rights Reserved.
 #
@@ -13,7 +15,6 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-# !/usr/bin/python3
 import os
 import sys
 

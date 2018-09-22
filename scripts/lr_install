@@ -99,6 +99,8 @@ from subprocess import call
 call(["systemctl", "enable", "lightning-rod.service"])
 call(["systemctl", "daemon-reload"])
 
+"""
 os.system('cp ' + py_dist_pack + '/iotronic_lightningrod/scripts/'
           + 'configure_lr.py /usr/bin/configure_lr')
 os.chmod('/usr/bin/configure_lr', 0o744)
+"""

@@ -4,8 +4,8 @@ include templates/plugins.example.json
 include templates/services.example.json
 include etc/systemd/system/s4t-lightning-rod.service
 include etc/logrotate.d/lightning-rod.log
-include scripts/install_lr.py
-include scripts/configure_lr.py
+include scripts/lr_install
+include scripts/lr_configure
 
 include AUTHORS
 include ChangeLog

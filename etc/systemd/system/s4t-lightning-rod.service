@@ -10,7 +10,7 @@ StandardInput=null
 StandardOutput=journal
 StandardError=journal
 WorkingDirectory=/usr/bin/
-ExecStart=/usr/bin/python /usr/bin/lightning-rod
+ExecStart=/usr/bin/python3 /usr/local/bin/lightning-rod
 Restart=on-abort
 
 [Install]

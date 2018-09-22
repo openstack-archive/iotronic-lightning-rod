@@ -1,0 +1,8 @@
+Code-Review+2: Nicola Peditto <npeditto@unime.it>
+Workflow+1: Nicola Peditto <npeditto@unime.it>
+Verified+2: Zuul
+Submitted-by: Zuul
+Submitted-at: Sat, 22 Sep 2018 06:35:13 +0000
+Reviewed-on: https://review.openstack.org/604504
+Project: openstack/iotronic-lightning-rod
+Branch: refs/heads/master

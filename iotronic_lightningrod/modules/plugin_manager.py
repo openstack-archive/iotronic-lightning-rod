@@ -14,10 +14,10 @@
 #    under the License.
 from __future__ import absolute_import
 
-__author__ = "Nicola Peditto <npeditto@unime.it"
+__author__ = "Nicola Peditto <n.peditto@gmail.com>"
 
 from datetime import datetime
-import imp
+import importlib as imp
 import json
 import os
 import queue
@@ -166,7 +166,11 @@ class PluginManager(Module.Module):
 
                         if os.path.exists(plugin_filename):
 
-                            task = imp.load_source("plugin", plugin_filename)
+                            # task = imp.load_source("plugin", plugin_filename)
+                            task = imp.machinery.SourceFileLoader(
+                                "plugin",
+                                plugin_filename
+                            ).load_module()
 
                             if os.path.exists(plugin_params_file):
 
@@ -362,7 +366,10 @@ class PluginManager(Module.Module):
                     # Import plugin (as python module)
                     if os.path.exists(plugin_filename):
 
-                        task = imp.load_source("plugin", plugin_filename)
+                        task = imp.machinery.SourceFileLoader(
+                            "plugin",
+                            plugin_filename
+                        ).load_module()
 
                         LOG.info(" - Plugin '" + plugin_uuid + "' imported!")
 
@@ -527,7 +534,11 @@ class PluginManager(Module.Module):
 
                     try:
 
-                        task = imp.load_source("plugin", plugin_filename)
+                        # task = imp.load_source("plugin", plugin_filename)
+                        task = imp.machinery.SourceFileLoader(
+                            "plugin",
+                            plugin_filename
+                        ).load_module()
 
                         LOG.info(" - Plugin " + plugin_uuid + " imported!")
 
@@ -751,7 +762,11 @@ class PluginManager(Module.Module):
                 if os.path.exists(plugin_filename):
 
                     # Import plugin python module
-                    task = imp.load_source("plugin", plugin_filename)
+                    # task = imp.load_source("plugin", plugin_filename)
+                    task = imp.machinery.SourceFileLoader(
+                        "plugin",
+                        plugin_filename
+                    ).load_module()
 
                     if parameters is None:
 

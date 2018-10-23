@@ -15,21 +15,23 @@
 
 __author__ = "Nicola Peditto <n.peditto@gmail.com>"
 
-import abc
-import six
-
 from oslo_log import log as logging
+
+from iotronic_lightningrod.devices.gpio import Gpio
+
 LOG = logging.getLogger(__name__)
 
 
-@six.add_metaclass(abc.ABCMeta)
-class Device(object):
-    """Base class for each s4t Lightning-rod device.
+class RaspberryGpio(Gpio.Gpio):
+    def __init__(self):
+        super(RaspberryGpio, self).__init__("raspberry")
+        LOG.info("Raspberry GPIO module importing...")
 
-    """
+    # Enable GPIO
+    def EnableGPIO(self):
+        result = " - GPIO not available for 'raspberry' device!"
+        LOG.info(result)
 
-    def __init__(self, device_type):
-        self.device_type = device_type
-
-    def finalize(self):
-        pass
+    def DisableGPIO(self):
+        result = " - GPIO not available for 'raspberry' device!"
+        LOG.info(result)

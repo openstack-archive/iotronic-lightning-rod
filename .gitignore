@@ -12,4 +12,5 @@ ChangeLog
 *.md
 .eggs
 dist
-__pycache__
+iotronic_lightningrod/modules/test.py
+iotronic_lightningrod/modules/vfs_*

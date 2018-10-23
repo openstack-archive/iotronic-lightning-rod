@@ -15,21 +15,42 @@
 
 __author__ = "Nicola Peditto <n.peditto@gmail.com>"
 
-import abc
-import six
+import inspect
+
+from iotronic_lightningrod.devices import Device
+from iotronic_lightningrod.devices.gpio import raspberry
 
 from oslo_log import log as logging
 LOG = logging.getLogger(__name__)
 
 
-@six.add_metaclass(abc.ABCMeta)
-class Device(object):
-    """Base class for each s4t Lightning-rod device.
+def whoami():
+    return inspect.stack()[1][3]
 
-    """
 
-    def __init__(self, device_type):
-        self.device_type = device_type
+def makeNothing():
+    pass
+
+
+class System(Device.Device):
+
+    def __init__(self):
+        super(System, self).__init__("raspberry")
+
+        raspberry.RaspberryGpio().EnableGPIO()
 
     def finalize(self):
+        """Function called at the end of module loading (after RPC registration).
+
+        :return:
+
+        """
         pass
+
+    async def testRPC(self):
+        rpc_name = whoami()
+        LOG.info("RPC " + rpc_name + " CALLED...")
+        await makeNothing()
+        result = " - " + rpc_name + " result: testRPC is working!!!\n"
+        LOG.info(result)
+        return result

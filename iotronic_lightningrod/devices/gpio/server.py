@@ -13,7 +13,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-__author__ = "Nicola Peditto <npeditto@unime.it"
+__author__ = "Nicola Peditto <n.peditto@gmail.com>"
 
 from oslo_log import log as logging
 
@@ -29,9 +29,9 @@ class ServerGpio(Gpio.Gpio):
 
     # Enable GPIO
     def EnableGPIO(self):
-        result = ' - GPIO not available for server device!'
+        result = " - GPIO not available for 'server' device!"
         LOG.info(result)
 
     def DisableGPIO(self):
-        result = ' - GPIO not available for server device!'
+        result = " - GPIO not available for 'server' device!"
         LOG.info(result)

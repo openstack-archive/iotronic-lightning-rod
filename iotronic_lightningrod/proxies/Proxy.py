@@ -23,13 +23,13 @@ LOG = logging.getLogger(__name__)
 
 
 @six.add_metaclass(abc.ABCMeta)
-class Device(object):
-    """Base class for each s4t Lightning-rod device.
+class Proxy(object):
+    """Base class for proxies supported by Iotornic.
 
     """
 
-    def __init__(self, device_type):
-        self.device_type = device_type
+    def __init__(self, proxy_type):
+        self.type = proxy_type
 
     def finalize(self):
         pass

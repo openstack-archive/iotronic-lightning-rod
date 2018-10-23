@@ -13,7 +13,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-__author__ = "Nicola Peditto <npeditto@unime.it"
+__author__ = "Nicola Peditto <n.peditto@gmail.com>"
 
 import asyncio
 
@@ -38,6 +38,6 @@ class Test(Module.Module):
         return result
 
     async def add(self, x, y):
-        c = await x + y
+        c = x + y
         LOG.info("DEVICE add result: " + str(c))
         return c

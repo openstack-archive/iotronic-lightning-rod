@@ -13,7 +13,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-__author__ = "Nicola Peditto <npeditto@unime.it"
+__author__ = "Nicola Peditto <n.peditto@gmail.com>"
 
 import abc
 import six
@@ -21,19 +21,6 @@ import threading
 
 from oslo_log import log as logging
 LOG = logging.getLogger(__name__)
-
-
-"""
-from twisted.internet.defer import inlineCallbacks
-
-@inlineCallbacks
-def sendNotification(msg=None):
-    try:
-        res = yield SESSION.call(u'agent.stack4things.echo', msg)
-        LOG.info("NOTIFICATION " + str(res))
-    except Exception as e:
-        LOG.warning("NOTIFICATION error: {0}".format(e))
-"""
 
 
 @six.add_metaclass(abc.ABCMeta)
@@ -62,13 +49,6 @@ class Plugin(threading.Thread):
         """
     def stop(self):
         self._is_running = False
-
-    """
-    def Done(self):
-        self.setStatus("COMPLETED")
-        sendNotification(msg="hello!")
-        self.checkStatus()
-    """
 
     def checkStatus(self):
         # LOG.debug("Plugin " + self.name + " check status: " + self.status)

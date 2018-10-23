@@ -12,7 +12,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-__author__ = "Nicola Peditto <npeditto@unime.it"
+__author__ = "Nicola Peditto <n.peditto@gmail.com>"
 
 # Autobahn imports
 import asyncio
@@ -47,16 +47,25 @@ LOG = logging.getLogger(__name__)
 lr_opts = [
     cfg.StrOpt('lightningrod_home',
                default='/var/lib/iotronic',
-               help=('Lightning Home Data')),
+               help=('Lightning-rod Home Data')),
     cfg.BoolOpt('skip_cert_verify',
                 default=True,
                 help=('Flag for skipping the verification of the server cert '
                       '(for the auto-signed ones)')),
+]
 
+proxy_opts = [
+    cfg.StrOpt(
+        'proxy',
+        choices=[('nginx', ('nginx proxy')), ],
+        help=('Proxy for WebServices Manager')
+    ),
 ]
 
 CONF = cfg.CONF
 CONF.register_opts(lr_opts)
+CONF.register_opts(proxy_opts)
+
 
 SESSION = None
 global board
@@ -64,6 +73,7 @@ board = None
 reconnection = False
 RPC = {}
 RPC_devices = {}
+RPC_proxies = {}
 
 # ASYNCIO
 loop = None
@@ -168,7 +178,7 @@ def modulesLoader(session):
             # LOG.debug(ext.name)
 
             if (ext.name == 'gpio') & (board.type == 'server'):
-                LOG.info('- GPIO module disabled for laptop devices')
+                LOG.info("- GPIO module disabled for 'server' devices")
 
             else:
                 mod = ext.plugin(board, session)
@@ -448,7 +458,7 @@ def wampConnect(wamp_conf):
                         LOG.info("\n\n\nBoard is becoming operative...\n\n\n")
                         board.updateStatus("operative")
                         board.loadSettings()
-                        LOG.info("WAMP status @ firt connection:" +
+                        LOG.info("WAMP status @ first connection:" +
                                  "\n- board = " + str(board.status) +
                                  "\n- reconnection = " + str(reconnection) +
                                  "\n- connected = " + str(connected)
@@ -674,39 +684,63 @@ def Bye():
 
 
 def LogoLR():
-    LOG.info('')
     LOG.info('##############################')
     LOG.info('  Stack4Things Lightning-rod')
     LOG.info('##############################')
+
+
+def checkIotronicConf(lr_CONF):
+    try:
+        if(lr_CONF.log_file == None):
+            LOG.warning("'log_file' is not specified!")
+            return False
+        else:
+            print("View logs in " + lr_CONF.log_file)
+            return True
+    except Exception as err:
+        print(err)
+        return False
 
 
 class LightningRod(object):
 
     def __init__(self):
 
+        LogoLR()
+
+        LOG.info("LR available modules: ")
+        for ep in pkg_resources.iter_entry_points(group='s4t.modules'):
+            LOG.info(" - " + str(ep))
+
         logging.register_options(CONF)
         DOMAIN = "s4t-lightning-rod"
         CONF(project='iotronic')
         logging.setup(CONF, DOMAIN)
 
-        if CONF.debug:
-            txaio.start_logging(level="debug")
+        if (checkIotronicConf(CONF)):
 
-        signal.signal(signal.SIGINT, self.stop_handler)
+            if CONF.debug:
+                txaio.start_logging(level="debug")
 
-        LogoLR()
+            signal.signal(signal.SIGINT, self.stop_handler)
 
-        global board
-        board = Board()
+            LogoLR()
 
-        LOG.info('Info:')
-        LOG.info(' - Logs: /var/log/s4t-lightning-rod.log')
-        current_time = board.getTimestamp()
-        LOG.info(" - Current time: " + current_time)
+            global board
+            board = Board()
 
-        self.w = WampManager(board.wamp_config)
+            LOG.info('Lightning-rod configurations:')
+            LOG.info(' - Logs: ' + CONF.log_file)
+            LOG.info(" - Current time: " + board.getTimestamp())
+            LOG.info(" - Home: " + CONF.lightningrod_home)
+            LOG.info(" - WebServices Proxy: " + CONF.proxy)
 
-        self.w.start()
+            self.w = WampManager(board.wamp_config)
+
+            self.w.start()
+
+        else:
+            Bye()
 
     def stop_handler(self, signum, frame):
         LOG.info("LR is shutting down...")

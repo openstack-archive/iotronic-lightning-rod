@@ -13,16 +13,20 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-__author__ = "Nicola Peditto <npeditto@unime.it"
+__author__ = "Nicola Peditto <n.peditto@gmail.com>"
 
-import imp
+import importlib as imp
 import inspect
 import os
+import subprocess
+
+from datetime import datetime
 
 from iotronic_lightningrod.config import package_path
 from iotronic_lightningrod.lightningrod import RPC_devices
 from iotronic_lightningrod.lightningrod import SESSION
 from iotronic_lightningrod.modules import Module
+from iotronic_lightningrod.modules import utils
 
 
 from oslo_log import log as logging
@@ -36,15 +40,19 @@ class DeviceManager(Module.Module):
         # Module declaration
         super(DeviceManager, self).__init__("DeviceManager", board)
 
+        self.device_session = session
+
         device_type = board.type
 
         path = package_path + "/devices/" + device_type + ".py"
 
         if os.path.exists(path):
 
-            device_module = imp.load_source("device", path)
+            device_module = imp.import_module(
+                "iotronic_lightningrod.devices." + device_type
+            )
 
-            LOG.info(" - Device " + device_type + " module imported!")
+            LOG.info(" - Device '" + device_type + "' module imported!")
 
             device = device_module.System()
 
@@ -60,7 +68,7 @@ class DeviceManager(Module.Module):
             board.device = device
 
         else:
-            LOG.warning("Device " + device_type + " not supported!")
+            LOG.warning("Device '" + device_type + "' not supported!")
 
     def finalize(self):
         pass
@@ -82,3 +90,52 @@ class DeviceManager(Module.Module):
                 SESSION.register(meth[1], rpc_addr)
 
                 LOG.info("   --> " + str(meth[0]) + " registered!")
+
+    async def DevicePing(self):
+        rpc_name = utils.getFuncName()
+        LOG.info("RPC " + rpc_name + " CALLED")
+        return datetime.now().strftime('%Y-%m-%dT%H:%M:%S.%f')
+
+    async def DeviceReboot(self):
+        rpc_name = utils.getFuncName()
+        LOG.info("RPC " + rpc_name + " CALLED")
+
+        command = "reboot"
+        subprocess.call(command, shell=True)
+
+        return datetime.now().strftime('%Y-%m-%dT%H:%M:%S.%f')
+
+    async def DeviceHostname(self):
+        rpc_name = utils.getFuncName()
+        LOG.info("RPC " + rpc_name + " CALLED")
+
+        command = "hostname"
+        # subprocess.call(command, shell=True)
+
+        out = subprocess.Popen(
+            command,
+            shell=True,
+            stdout=subprocess.PIPE
+        )
+
+        output = out.communicate()[0].decode('utf-8').strip()
+        print(output)
+
+        return str(output) + "@" + \
+            str(datetime.now().strftime('%Y-%m-%dT%H:%M:%S.%f'))
+
+    """
+    async def DeviceWampDisconnect(self):
+        rpc_name = utils.getFuncName()
+        LOG.info("RPC " + rpc_name + " CALLED")
+
+        import threading, time
+
+        def delayDisconnection():
+            time.sleep(5)
+            SESSION.disconnect()
+
+        threading.Thread(target=delayDisconnection).start()
+
+        return "Device disconnection in 5 seconds..."
+    """

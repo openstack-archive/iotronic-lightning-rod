@@ -27,6 +27,6 @@ class Worker(Plugin.Plugin):
         super(Worker, self).__init__(uuid, name, q_result, params)
 
     def run(self):
-        LOG.info("Input parameters: " + str(self.params))
+        LOG.info("Input parameters: " + str(self.params['name']))
         LOG.info("Plugin " + self.name + " process completed!")
-        self.q_result.put("ZERO RESULT")
+        self.q_result.put("ECHO RESULT: "+str(self.params['name']))

@@ -14,7 +14,7 @@
 #    under the License.
 from __future__ import with_statement
 
-__author__ = "Nicola Peditto <npeditto@unime.it"
+__author__ = "Nicola Peditto <n.peditto@gmail.com>"
 
 import errno
 import os

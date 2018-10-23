@@ -13,7 +13,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-__author__ = "Nicola Peditto <npeditto@unime.it"
+__author__ = "Nicola Peditto <n.peditto@gmail.com>"
 
 from datetime import datetime
 import json
@@ -48,6 +48,7 @@ class Board(object):
         self.location = {}
 
         self.device = None
+        self.proxy = None
 
         self.wamp_config = None
         self.extra = {}
@@ -76,9 +77,6 @@ class Board(object):
         '''This method gets and sets the board attributes from the conf file.
 
         '''
-
-        LOG.info("Lightning-rod home:")
-        LOG.info(" - " + CONF.lightningrod_home)
 
         # Load all settings.json file
         self.iotronic_config = self.loadConf()

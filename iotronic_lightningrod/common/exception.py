@@ -13,7 +13,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-__author__ = "Nicola Peditto <npeditto@unime.it"
+__author__ = "Nicola Peditto <n.peditto@gmail.com>"
 
 import os
 import signal
@@ -33,13 +33,17 @@ def manageTimeout(error_message, action):
         os._exit(1)
 
 
+class NginxError(Exception):
+
+    def __init__(self, message):
+        super(NginxError, self).__init__(message)
+
+
 class TimeoutError(Exception):
 
     def __init__(self, message, action):
-        # Call the base class constructor with the parameters it needs
         super(TimeoutError, self).__init__(message)
 
-        # Now for your custom code...
         self.action = action
 
 

@@ -18,10 +18,18 @@
 import os
 import site
 
+if os.path.exists('/iotronic_lightningrod/'):
+    print("Cleaning install folders...")
+    os.system('rm -rf ' + site.getsitepackages()[0]
+              + '/iotronic_lightningrod/etc')
+    os.system('rm -rf ' + site.getsitepackages()[0]
+              + '/iotronic_lightningrod/templates')
+    print("Moving installation folders...")
+    os.system('mv -f /iotronic_lightningrod/* '
+              + site.getsitepackages()[0] + '/iotronic_lightningrod/')
 
 py_dist_pack = site.getsitepackages()[0]
-print(py_dist_pack)
-
+print("Python packages folder: " + py_dist_pack)
 
 print('Iotronic environment creation:')
 if not os.path.exists('/etc/iotronic/'):

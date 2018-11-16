@@ -1,0 +1,10 @@
+Code-Review+1: caoyuan <cao.yuan@99cloud.net>
+Code-Review+1: wu.chunyang <wu.chunyang@99cloud.net>
+Code-Review+2: Nicola Peditto <npeditto@unime.it>
+Workflow+1: Nicola Peditto <npeditto@unime.it>
+Verified+2: Zuul
+Submitted-by: Zuul
+Submitted-at: Fri, 16 Nov 2018 15:59:02 +0000
+Reviewed-on: https://review.openstack.org/611051
+Project: openstack/iotronic-lightning-rod
+Branch: refs/heads/master

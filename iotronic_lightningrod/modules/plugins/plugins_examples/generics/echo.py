@@ -13,7 +13,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-from iotronic_lightningrod.plugins import Plugin
+from iotronic_lightningrod.modules.plugins import Plugin
 
 from oslo_log import log as logging
 LOG = logging.getLogger(__name__)
@@ -29,4 +29,4 @@ class Worker(Plugin.Plugin):
     def run(self):
         LOG.info("Input parameters: " + str(self.params['name']))
         LOG.info("Plugin " + self.name + " process completed!")
-        self.q_result.put("ECHO RESULT: "+str(self.params['name']))
+        self.q_result.put("ECHO RESULT: " + str(self.params['name']))

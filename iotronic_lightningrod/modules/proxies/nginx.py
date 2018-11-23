@@ -16,7 +16,7 @@
 __author__ = "Nicola Peditto <n.peditto@gmail.com>"
 
 
-from iotronic_lightningrod.proxies import Proxy
+from iotronic_lightningrod.modules.proxies import Proxy
 
 from oslo_log import log as logging
 LOG = logging.getLogger(__name__)
@@ -24,7 +24,6 @@ LOG = logging.getLogger(__name__)
 
 import json
 import os
-import site
 import subprocess
 import time
 
@@ -162,61 +161,49 @@ class ProxyManager(Proxy.Proxy):
 
         return json.dumps(nginxMsg)
 
-    def _proxyBoardDnsSetup(self, board_dns, owner_email):
+    def _nginx_conf_verify(self, fp):
+        with open(fp, "r") as text_file:
+            LOG.debug(text_file.read())
+
+    def _proxyEnableWebService(self, board_dns, owner_email):
 
         nginxMsg = {}
 
         try:
 
-            py_dist_pack = site.getsitepackages()[0]
+            nginx_path = "/etc/nginx/conf.d/"
 
-            iotronic_nginx_path = "/etc/nginx/conf.d/iotronic"
-            iotronic_nginx_default = "/etc/nginx/conf.d/iotronic/default"
+            nginx_board_conf_file = nginx_path + "/" + board_dns + ".conf"
+            nginx_board_conf = '''server {{
+                listen              80;
+                server_name    {0};
+            }}
+            '''.format(board_dns)
 
-            if not os.path.exists(iotronic_nginx_path):
-                os.makedirs(iotronic_nginx_path)
+            with open(nginx_board_conf_file, "w") as text_file:
+                text_file.write("%s" % nginx_board_conf)
 
-            nginx_default = '''proxy_set_header Host $http_host;
-            proxy_set_header X-Real-IP $remote_addr;
-            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-            proxy_set_header X-Forwarded-Proto $scheme;
-            proxy_http_version 1.1;
-            proxy_set_header Upgrade $http_upgrade;
-            proxy_set_header Connection "upgrade";'''
-
-            with open(iotronic_nginx_default, "w") as text_file:
-                text_file.write("%s" % nginx_default)
-
-            iotronic_nginx_avl_path = "/etc/nginx/sites-available/iotronic"
-
-            string = '''server {{
-                   listen 80;
-
-                   server_name {0};
-                   include conf.d/iotronic/*;
-               }}'''.format(board_dns)
-
-            with open(iotronic_nginx_avl_path, "w") as text_file:
-                text_file.write("%s" % string)
-
-            os.system(
-                'ln -s '
-                '/etc/nginx/sites-available/iotronic '
-                '/etc/nginx/sites-enabled/'
-            )
-
+            self._nginx_conf_verify(nginx_board_conf_file)
             time.sleep(3)
             self._proxyReload()
             time.sleep(3)
 
-            command = '/usr/bin/certbot -n ' \
-                      '--redirect --authenticator webroot ' \
-                      '--installer nginx -w /var/www/html/ ' \
-                      '--domain ' + board_dns + ' --agree-tos ' \
-                      '--email ' + owner_email
+            command = "/usr/bin/certbot -n " \
+                      "--redirect " \
+                      "--authenticator webroot " \
+                      "--installer nginx " \
+                      "-w /var/www/html/ " \
+                      "--domain " + board_dns + " " \
+                      "--agree-tos " \
+                      "--email " + owner_email
 
             LOG.debug(command)
-            call(command, shell=True)
+            certbot_result = call(command, shell=True)
+            LOG.info("CERTBOT RESULT: " + str(certbot_result))
+
+            nginxMsg['result'] = "SUCCESS"
+            nginxMsg['message'] = "Webservice module enabled."
+            LOG.info("--> " + nginxMsg['message'])
 
         except Exception as err:
             nginxMsg['log'] = "NGINX DNS setup error: " + str(err)
@@ -225,99 +212,142 @@ class ProxyManager(Proxy.Proxy):
 
         return json.dumps(nginxMsg)
 
-    def _exposeWebservice(self, service_name, local_port):
+    def _exposeWebservice(self, board_dns, service_dns, local_port, dns_list):
 
         nginxMsg = {}
 
         try:
 
-            nginx_path = "/etc/nginx/conf.d/iotronic"
+            nginx_path = "/etc/nginx/conf.d"
 
-            if not os.path.exists(nginx_path):
-                os.makedirs(nginx_path)
+            service_path = nginx_path + "/" + service_dns + ".conf"
+            string = '''server {{
+            listen              80;
+            server_name         {0};
 
-            fp = nginx_path + "/" + service_name
+                proxy_set_header Host $http_host;
+                proxy_set_header X-Real-IP $remote_addr;
+                proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+                proxy_set_header X-Forwarded-Proto $scheme;
+                proxy_http_version 1.1;
+                proxy_set_header Upgrade $http_upgrade;
+                proxy_set_header Connection "upgrade";
 
-            string = '''location /{0}/ {{
-                    proxy_pass http://localhost:{1}/;
-                include conf.d/iotronic/default;
+            location / {{
+            proxy_pass http://localhost:{1};
             }}
-
-            location /{0} {{
-                rewrite ^ $scheme://$http_host/{0}/ redirect;
             }}
-            '''.format(service_name, local_port)
+            '''.format(service_dns, local_port)
 
-            with open(fp, "w") as ws_nginx_conf:
+            with open(service_path, "w") as ws_nginx_conf:
                 ws_nginx_conf.write("%s" % string)
 
             time.sleep(3)
 
-            nginxMsg['message'] = "Webservice '" + service_name + \
-                                  "' configuration injected in NGINX."
-            nginxMsg['result'] = "SUCCESS"
-            LOG.info("--> " + nginxMsg['message'])
+            self._nginx_conf_verify(service_path)
 
             self._proxyReload()
 
             time.sleep(3)
 
+            command = "/usr/bin/certbot " \
+                      "--expand -n " \
+                      "--redirect " \
+                      "--authenticator webroot " \
+                      "--installer nginx -w /var/www/html/ " \
+                      "--domain " + str(dns_list)
+
+            command = "/usr/bin/certbot " \
+                      "-n " \
+                      "--redirect " \
+                      "--authenticator webroot " \
+                      "--installer nginx -w /var/www/html/ " \
+                      "--cert-name " + str(board_dns) + " " \
+                      "--domain " + str(dns_list)
+
+            LOG.debug(command)
+            certbot_result = call(command, shell=True)
+            LOG.info("CERTBOT RESULT: " + str(certbot_result))
+
+            LOG.info("Webservices list updated:\n" +
+                     str(self._webserviceList()))
+
+            nginxMsg['result'] = "SUCCESS"
+            nginxMsg['message'] = "Webservice '" + service_dns + \
+                                  "' exposed in NGINX."
+            LOG.info(nginxMsg['message'])
+
         except Exception as e:
             nginxMsg['message'] = "Error exposing Webservice '" + \
-                                  service_name + \
+                                  service_dns + \
                                   "' configuration in NGINX: {}".format(e)
             nginxMsg['result'] = "ERROR"
             LOG.warning("--> " + nginxMsg['message'])
 
         return json.dumps(nginxMsg)
 
-    def _disableWebservice(self, service_name):
+    def _disableWebservice(self, service_dns, dns_list):
+        """
+        :param service:
+        :param dns_list:
+        :return:
+        """
 
         nginxMsg = {}
 
         try:
 
-            nginx_path = "/etc/nginx/conf.d/iotronic"
-            service_path = nginx_path + "/" + service_name
+            nginx_path = "/etc/nginx/conf.d"
+            service_path = nginx_path + "/" + service_dns + ".conf"
 
             if os.path.exists(service_path):
 
                 os.remove(service_path)
 
-                time.sleep(3)
-
-                nginxMsg['message'] = "webservice '" \
-                                      + service_name + "' disabled."
-                nginxMsg['result'] = "SUCCESS"
-                # LOG.info("--> " + nginxMsg['message'])
+                time.sleep(1)
 
                 self._proxyReload()
 
                 time.sleep(3)
 
+                command = "/usr/bin/certbot " \
+                          "--expand -n " \
+                          "--redirect " \
+                          "--authenticator webroot " \
+                          "--installer nginx -w /var/www/html/ " \
+                          "--domain " + str(dns_list)
+
+                LOG.debug(command)
+                certbot_result = call(command, shell=True)
+                LOG.info("CERTBOT RESULT: " + str(certbot_result))
+
+                LOG.info("Webservices list updated:\n" + str(
+                    self._webserviceList()))
+
+                nginxMsg['message'] = "webservice '" \
+                                      + service_dns + "' disabled."
+                nginxMsg['result'] = "SUCCESS"
+                LOG.info(nginxMsg['message'])
+
             else:
                 nginxMsg['message'] = "webservice file " \
                     + service_path + " does not exist"
                 nginxMsg['result'] = "ERROR"
-                # LOG.info("--> " + nginxMsg['message'])
 
         except Exception as e:
             nginxMsg['message'] = "Error disabling Webservice '" + \
-                                  service_name + "': {}".format(e)
+                                  service_dns + "': {}".format(e)
             nginxMsg['result'] = "ERROR"
-            # LOG.warning("--> " + nginxMsg['message'])
 
         return json.dumps(nginxMsg)
 
     def _webserviceList(self):
 
-        nginx_path = "/etc/nginx/conf.d/iotronic"
+        nginx_path = "/etc/nginx/conf.d/"
 
         if os.path.exists(nginx_path):
             service_list = [f for f in os.listdir(nginx_path)
                             if os.path.isfile(os.path.join(nginx_path, f))]
-
-            service_list.remove('default')
         else:
             service_list = []
 

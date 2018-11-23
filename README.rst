@@ -18,5 +18,3 @@ Installation guides
 * `Raspberry Pi 3 <https://github.com/MDSLab/iotronic-lightning-rod-agent/blob/master/doc/installation/raspberry_pi_3.rst>`_.
 
 * `Ubuntu 16.04 <https://github.com/MDSLab/iotronic-lightning-rod-agent/blob/master/doc/installation/ubuntu1604.rst>`_.
-
-* `Arduino YUN <https://github.com/MDSLab/iotronic-lightning-rod-agent/blob/master/doc/installation/arduino_yun.rst>`_.

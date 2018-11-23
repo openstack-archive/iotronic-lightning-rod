@@ -42,19 +42,6 @@ class NetworkManager(Module.Module):
     def restore(self):
         pass
 
-    async def test_function(self):
-        import random
-        s = random.uniform(0.5, 1.5)
-        await asyncio.sleep(s)
-        result = "DEVICE test result: TEST!"
-        LOG.info(result)
-        return result
-
-    async def add(self, x, y):
-        c = x + y
-        LOG.info("DEVICE add result: " + str(c))
-        return c
-
     async def Create_VIF(self, r_tcp_port):
 
         LOG.info("Creation of the VIF ")

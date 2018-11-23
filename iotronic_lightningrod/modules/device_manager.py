@@ -19,6 +19,9 @@ import importlib as imp
 import inspect
 import os
 import subprocess
+import sys
+import threading
+import time
 
 from datetime import datetime
 
@@ -27,6 +30,7 @@ from iotronic_lightningrod.lightningrod import RPC_devices
 from iotronic_lightningrod.lightningrod import SESSION
 from iotronic_lightningrod.modules import Module
 from iotronic_lightningrod.modules import utils
+import iotronic_lightningrod.wampmessage as WM
 
 
 from oslo_log import log as logging
@@ -85,7 +89,10 @@ class DeviceManager(Module.Module):
 
             if (meth[0] != "__init__") & (meth[0] != "finalize"):
                 # LOG.info(" - " + str(meth[0]))
-                rpc_addr = u'iotronic.' + board.uuid + '.' + meth[0]
+                # rpc_addr = u'iotronic.' + board.uuid + '.' + meth[0]
+                rpc_addr = u'iotronic.' + str(board.session_id) + '.' + \
+                           board.uuid + '.' + meth[0]
+
                 # LOG.debug(" --> " + str(rpc_addr))
                 SESSION.register(meth[1], rpc_addr)
 
@@ -94,23 +101,50 @@ class DeviceManager(Module.Module):
     async def DevicePing(self):
         rpc_name = utils.getFuncName()
         LOG.info("RPC " + rpc_name + " CALLED")
-        return datetime.now().strftime('%Y-%m-%dT%H:%M:%S.%f')
+
+        message = datetime.now().strftime('%Y-%m-%dT%H:%M:%S.%f')
+        w_msg = WM.WampSuccess(message)
+
+        return w_msg.serialize()
 
     async def DeviceReboot(self):
         rpc_name = utils.getFuncName()
         LOG.info("RPC " + rpc_name + " CALLED")
 
-        command = "reboot"
-        subprocess.call(command, shell=True)
+        def delayBoardReboot():
+            time.sleep(3)
+            subprocess.call("reboot", shell=True)
 
-        return datetime.now().strftime('%Y-%m-%dT%H:%M:%S.%f')
+        threading.Thread(target=delayBoardReboot).start()
+
+        message = "Rebooting board in few seconds @" + \
+                  str(datetime.now().strftime('%Y-%m-%dT%H:%M:%S.%f'))
+        w_msg = WM.WampSuccess(message)
+
+        return w_msg.serialize()
+
+    async def DeviceRestartLR(self):
+        rpc_name = utils.getFuncName()
+        LOG.info("RPC " + rpc_name + " CALLED")
+
+        def delayLRrestarting():
+            time.sleep(2)
+            python = sys.executable
+            os.execl(python, python, *sys.argv)
+
+        threading.Thread(target=delayLRrestarting).start()
+
+        message = "Restarting LR in 5 seconds (" + \
+                  datetime.now().strftime('%Y-%m-%dT%H:%M:%S.%f') + ")..."
+        w_msg = WM.WampSuccess(message)
+
+        return w_msg.serialize()
 
     async def DeviceHostname(self):
         rpc_name = utils.getFuncName()
         LOG.info("RPC " + rpc_name + " CALLED")
 
         command = "hostname"
-        # subprocess.call(command, shell=True)
 
         out = subprocess.Popen(
             command,
@@ -119,23 +153,28 @@ class DeviceManager(Module.Module):
         )
 
         output = out.communicate()[0].decode('utf-8').strip()
-        print(output)
 
-        return str(output) + "@" + \
+        message = str(output) + "@" + \
             str(datetime.now().strftime('%Y-%m-%dT%H:%M:%S.%f'))
+        w_msg = WM.WampSuccess(message)
 
-    """
-    async def DeviceWampDisconnect(self):
+        return w_msg.serialize()
+
+    async def DeviceNetConfig(self):
         rpc_name = utils.getFuncName()
         LOG.info("RPC " + rpc_name + " CALLED")
 
-        import threading, time
+        command = "ifconfig"
 
-        def delayDisconnection():
-            time.sleep(5)
-            SESSION.disconnect()
+        out = subprocess.Popen(
+            command,
+            shell=True,
+            stdout=subprocess.PIPE
+        )
 
-        threading.Thread(target=delayDisconnection).start()
+        output = out.communicate()[0].decode('utf-8').strip()
 
-        return "Device disconnection in 5 seconds..."
-    """
+        message = str(output)
+        w_msg = WM.WampSuccess(message)
+
+        return w_msg.serialize()

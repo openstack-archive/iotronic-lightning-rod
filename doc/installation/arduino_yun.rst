@@ -1,5 +1,5 @@
-IoTronic Lightning-rod installation guide for Arduino YUN
-=========================================================
+[DEPRECATED] IoTronic Lightning-rod installation guide for Arduino YUN
+======================================================================
 
 We tested this procedure on a Arduino YUN board with OpenWRT LininoIO image.
 

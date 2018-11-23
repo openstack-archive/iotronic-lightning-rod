@@ -15,11 +15,12 @@
 
 __author__ = "Nicola Peditto <n.peditto@gmail.com>"
 
-import os
 import signal
 
 from oslo_log import log as logging
 LOG = logging.getLogger(__name__)
+
+from iotronic_lightningrod.common import utils
 
 
 def manageTimeout(error_message, action):
@@ -29,8 +30,36 @@ def manageTimeout(error_message, action):
 
     except TimeoutError as err:
         details = err.args[0]
-        LOG.warning("Board connection call timeout: " + str(details))
-        os._exit(1)
+        if (action == "ws_alive"):
+
+            LOG.warning("Iotronic RPC-ALIVE timeout details: " + str(details))
+            try:
+
+                utils.destroyWampSocket()
+
+            except Exception as e:
+                LOG.warning("Iotronic RPC-ALIVE timeout error: " + str(e))
+
+        else:
+            LOG.warning("Board connection call timeout: " + str(details))
+            utils.LR_restart()
+
+"""
+def manageTimeoutALIVE(error_message, action):
+    try:
+
+        raise TimeoutError(error_message, action)
+
+    except TimeoutError as err:
+        details = err.args[0]
+        LOG.warning("Iotronic RPC-ALIVE timeout details: " + str(details))
+        try:
+
+            utils.destroyWampSocket()
+
+        except Exception as e:
+            LOG.warning("Iotronic RPC-ALIVE timeout error: " + str(e))
+"""
 
 
 class NginxError(Exception):
@@ -67,15 +96,31 @@ class timeout(object):
 
 class timeoutRPC(object):
 
-    def __init__(self, seconds=1, error_message='Timeout', action=None):
+    def __init__(self, seconds=1, error_message='Timeout-RPC', action=None):
         self.seconds = seconds
         self.error_message = error_message
         self.action = action
 
     def handle_timeout(self, signum, frame):
         manageTimeout(self.error_message, self.action)
-        # LOG.warning("RPC timeout: " + str(self.error_message))
-        # os._exit(1)
+
+    def __enter__(self):
+        signal.signal(signal.SIGALRM, self.handle_timeout)
+        signal.alarm(self.seconds)
+
+    def __exit__(self, type, value, traceback):
+        signal.alarm(0)
+
+
+class timeoutALIVE(object):
+
+    def __init__(self, seconds=1, error_message='Timeout-Alive', action=None):
+        self.seconds = seconds
+        self.error_message = error_message
+        self.action = action
+
+    def handle_timeout(self, signum, frame):
+        manageTimeout(self.error_message, self.action)
 
     def __enter__(self):
         signal.signal(signal.SIGALRM, self.handle_timeout)

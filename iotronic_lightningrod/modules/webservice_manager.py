@@ -15,7 +15,12 @@
 
 __author__ = "Nicola Peditto <n.peditto@gmail.com>"
 
+from iotronic_lightningrod.config import package_path
+from iotronic_lightningrod.lightningrod import RPC_proxies
+from iotronic_lightningrod.lightningrod import SESSION
 from iotronic_lightningrod.modules import Module
+from iotronic_lightningrod.modules import utils
+import iotronic_lightningrod.wampmessage as WM
 
 from oslo_config import cfg
 from oslo_log import log as logging
@@ -26,13 +31,9 @@ CONF = cfg.CONF
 import importlib as imp
 import inspect
 import json
+import OpenSSL.crypto
 import os
-
-from iotronic_lightningrod.config import package_path
-from iotronic_lightningrod.lightningrod import RPC_proxies
-from iotronic_lightningrod.lightningrod import SESSION
-from iotronic_lightningrod.modules import utils
-import iotronic_lightningrod.wampmessage as WM
+import time
 
 
 class WebServiceManager(Module.Module):
@@ -42,50 +43,101 @@ class WebServiceManager(Module.Module):
 
         LOG.info(" - Proxy used: " + CONF.proxy.upper())
 
-        proxy_type = CONF.proxy
-        path = package_path + "/proxies/" + proxy_type + ".py"
+        try:
+            proxy_type = CONF.proxy
+            path = package_path + "/modules/proxies/" + proxy_type + ".py"
 
-        if os.path.exists(path):
+            if os.path.exists(path):
 
-            proxy_module = imp.import_module("iotronic_lightningrod.proxies."
-                                             + proxy_type)
-            LOG.info(" --> " + proxy_type.upper() + " module imported!")
+                proxy_module = imp.import_module(
+                    "iotronic_lightningrod.modules.proxies." + proxy_type
+                )
 
-            proxy = proxy_module.ProxyManager()
+                LOG.info(" --> " + proxy_type.upper() + " module imported!")
 
-            proxy_meth_list = inspect.getmembers(
-                proxy,
-                predicate=inspect.ismethod
-            )
+                proxy = proxy_module.ProxyManager()
 
-            RPC_proxies[proxy_type] = proxy_meth_list
+                proxy_meth_list = inspect.getmembers(
+                    proxy,
+                    predicate=inspect.ismethod
+                )
 
-            board.proxy = proxy
+                RPC_proxies[proxy_type] = proxy_meth_list
 
-            self._proxyWampRegister(proxy_meth_list, board)
+                board.proxy = proxy
 
-        else:
-            LOG.warning("Proxy '" + proxy_type + "' not supported!")
+                self._proxyWampRegister(proxy_meth_list, board)
+
+            else:
+                LOG.warning("Proxy '" + proxy_type + "' not supported!")
+
+        except Exception as err:
+            LOG.error("Error init WebServiceManager: " + str(err))
 
     def finalize(self):
 
-        proxy_status = json.loads(self.board.proxy._proxyInfo())
-        LOG.info("--> Proxy " + self.board.proxy.type.upper()
-                 + " status:\n Active: " + str(proxy_status['status'])
-                 + "\n Info: " + str(proxy_status['log']))
+        try:
 
-        LOG.info("Webservice exposed on device:")
-        active_webservice_list = self.board.proxy._webserviceList()
-        if len(active_webservice_list) != 0:
-            for ws in active_webservice_list:
-                LOG.info("-> " + ws)
-        else:
-            LOG.info("-> NO WebService!")
+            proxy_status = json.loads(self.board.proxy._proxyInfo())
+            LOG.info("--> Proxy " + self.board.proxy.type.upper()
+                     + " status:\n Active: " + str(proxy_status['status'])
+                     + "\n Info: " + str(proxy_status['log']))
 
-        LOG.info("WebService Manager initialized!")
+            LOG.info("Webservice exposed on device:")
+            active_webservice_list = self.board.proxy._webserviceList()
+            if len(active_webservice_list) != 0:
+                for ws in active_webservice_list:
+                    ws = ws.replace('.conf', '')
+                    LOG.info("-> " + ws)
+            else:
+                LOG.info("-> NO WebService!")
+
+            LOG.info("Certificates on device:")
+            active_certs_list = self._certsList()
+            if len(active_certs_list) != 0:
+                for certificate in active_certs_list:
+                    LOG.info("-> " + certificate)
+
+                    c = open('/etc/letsencrypt/live/'
+                             + certificate + '/cert.pem').read()
+                    cert = OpenSSL.crypto.load_certificate(
+                        OpenSSL.crypto.FILETYPE_PEM, c)
+
+                    LOG.info("--> Subject: " + str(cert.get_subject()))
+                    LOG.info("--> ISSUER Organization:" +
+                             str(cert.get_issuer()))
+                    LOG.info("--> Expire date: " + str(
+                        cert.get_notAfter().decode("utf-8")))
+                    LOG.info("--> Expired: " + str(cert.has_expired()))
+
+            else:
+                LOG.info("-> NO certificates!")
+
+            # Safe apply changes on proxy
+            self.board.proxy._proxyReload()
+            time.sleep(3)
+
+            LOG.info("WebService Manager initialized!")
+
+        except Exception as err:
+            LOG.error("Error finalize init WebServiceManager: " + str(err))
 
     def restore(self):
         LOG.info("WebService Manager restored.")
+
+    def _certsList(self):
+
+        letsencrypt_path = "/etc/letsencrypt/live/"
+
+        if os.path.exists(letsencrypt_path):
+            certs_list = [
+                f for f in os.listdir(letsencrypt_path)
+                if os.path.isdir(os.path.join(letsencrypt_path, f))
+            ]
+        else:
+            certs_list = []
+
+        return certs_list
 
     def _proxyWampRegister(self, proxy_meth_list, board):
 
@@ -96,38 +148,41 @@ class WebServiceManager(Module.Module):
             if (meth[0] != "__init__") & (meth[0] != "finalize") \
                     & (meth[0] != "restore"):
                 # LOG.info(" - " + str(meth[0]))
-                rpc_addr = u'iotronic.' + board.uuid + '.' + meth[0]
+                rpc_addr = u'iotronic.' + str(board.session_id) + '.' + \
+                           board.uuid + '.' + meth[0]
+
                 # LOG.debug(" --> " + str(rpc_addr))
                 if not meth[0].startswith('_'):
                     SESSION.register(meth[1], rpc_addr)
                     LOG.info("   --> " + str(meth[0]))
 
-    async def ExposeWebservice(self, service_name, local_port):
+    async def ExposeWebservice(self, board_dns, service_dns,
+                               local_port, dns_list):
 
         rpc_name = utils.getFuncName()
         LOG.info("RPC " + rpc_name + " CALLED")
 
-        response = self.board.proxy._exposeWebservice(service_name, local_port)
+        response = self.board.proxy._exposeWebservice(board_dns, service_dns,
+                                                      local_port, dns_list)
 
         response = json.loads(response)
 
         if(response['result'] == "SUCCESS"):
-            message = "Webservice '" + service_name + "' successfully exposed!"
+            message = "Webservice '" + service_dns + "' successfully exposed!"
             LOG.info("--> " + str(message))
             w_msg = WM.WampSuccess(response)
         else:
-            message = "Error exposing webservice '" + service_name + "'"
             LOG.warning("--> " + str(response['message']))
             w_msg = WM.WampWarning(response)
 
         return w_msg.serialize()
 
-    async def UnexposeWebservice(self, service_name):
+    async def UnexposeWebservice(self, service, dns_list):
 
         rpc_name = utils.getFuncName()
         LOG.info("RPC " + rpc_name + " CALLED")
 
-        response = self.board.proxy._disableWebservice(service_name)
+        response = self.board.proxy._disableWebservice(service, dns_list)
 
         response = json.loads(response)
 
@@ -140,12 +195,15 @@ class WebServiceManager(Module.Module):
 
         return w_msg.serialize()
 
-    async def BoardDnsCertsSetup(self, board_dns, owner_email):
+    async def EnableWebService(self, board_dns, owner_email):
 
         rpc_name = utils.getFuncName()
         LOG.info("RPC " + rpc_name + " CALLED")
 
-        message = self.board.proxy._proxyBoardDnsSetup(board_dns, owner_email)
+        message = self.board.proxy._proxyEnableWebService(
+            board_dns,
+            owner_email
+        )
         w_msg = WM.WampSuccess(message)
 
         return w_msg.serialize()

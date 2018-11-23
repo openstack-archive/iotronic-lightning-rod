@@ -1,5 +1,5 @@
 # Copyright 2017 MDSLAB - University of Messina
-# All Rights Reserved.
+#    All Rights Reserved.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
 #    not use this file except in compliance with the License. You may obtain
@@ -13,31 +13,24 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-__author__ = "Nicola Peditto <n.peditto@gmail.com>"
-
-import asyncio
-
-from iotronic_lightningrod.modules import Module
+from iotronic_lightningrod.modules.plugins import Plugin
+# from iotronic_lightningrod.modules.plugins import pluginApis as API
 
 from oslo_log import log as logging
 LOG = logging.getLogger(__name__)
 
+# User imports
+import time
 
-class Test(Module.Module):
 
-    def __init__(self, board):
+class Worker(Plugin.Plugin):
+    def __init__(self, uuid, name, q_result=None, params=None):
+        super(Worker, self).__init__(uuid, name, q_result, params)
 
-        super(Test, self).__init__("Test", board)
+    def run(self):
+        LOG.info("Plugin " + self.name + " starting...")
+        LOG.info(self.params)
 
-    async def test_function(self):
-        import random
-        s = random.uniform(0.5, 1.5)
-        await asyncio.sleep(s)
-        result = "DEVICE test result: TEST!"
-        LOG.info(result)
-        return result
-
-    async def add(self, x, y):
-        c = x + y
-        LOG.info("DEVICE add result: " + str(c))
-        return c
+        while(self._is_running):
+            LOG.info(self.params['message'])
+            time.sleep(1)

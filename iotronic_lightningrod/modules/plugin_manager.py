@@ -26,8 +26,8 @@ import time
 
 
 from iotronic_lightningrod.modules import Module
+from iotronic_lightningrod.modules.plugins import PluginSerializer
 from iotronic_lightningrod.modules import utils
-from iotronic_lightningrod.plugins import PluginSerializer
 import iotronic_lightningrod.wampmessage as WM
 
 
@@ -166,7 +166,6 @@ class PluginManager(Module.Module):
 
                         if os.path.exists(plugin_filename):
 
-                            # task = imp.load_source("plugin", plugin_filename)
                             task = imp.machinery.SourceFileLoader(
                                 "plugin",
                                 plugin_filename

@@ -15,19 +15,26 @@
 
 __author__ = "Nicola Peditto <n.peditto@gmail.com>"
 
-from datetime import datetime
 import errno
 import json
 import os
 import psutil
 import signal
 import subprocess
+import time
+import traceback
+
+from datetime import datetime
+from threading import Thread
 from urllib.parse import urlparse
 
 from iotronic_lightningrod.modules import Module
 from iotronic_lightningrod.modules import utils
 
 import iotronic_lightningrod.wampmessage as WM
+
+from iotronic_lightningrod import lightningrod
+
 
 from oslo_config import cfg
 from oslo_log import log as logging
@@ -70,6 +77,9 @@ class ServiceManager(Module.Module):
                     if (p.name() == "node" and "wstun" in p.cmdline()[1]):
                         wstun_process_list.append(p)
 
+            if len(services_conf) != 0:
+                print("\nWSTUN processes:")
+
             for service_uuid in services_conf['services']:
 
                 service_name = services_conf['services'][service_uuid]['name']
@@ -85,11 +95,22 @@ class ServiceManager(Module.Module):
                                      "' already exists; killing...")
 
                             # 1. Kill wstun process (if exists)
+
+                            # No zombie alert activation
+                            lightningrod.zombie_alert = False
+                            LOG.debug(
+                                "[WSTUN-RESTORE] - "
+                                "on-finalize zombie_alert: " +
+                                str(lightningrod.zombie_alert)
+                            )
+
                             try:
-                                os.kill(service_pid, signal.SIGKILL)
+                                os.kill(service_pid, signal.SIGINT)
+                                print("OLD WSTUN KILLED: " + str(wp))
                                 LOG.info(" --> service '" + service_name
                                          + "' with PID " + str(service_pid)
                                          + " was killed; creating new one...")
+
                             except OSError:
                                 LOG.warning(" - WSTUN process already killed, "
                                             "creating new one...")
@@ -102,7 +123,7 @@ class ServiceManager(Module.Module):
                 local_port = \
                     services_conf['services'][service_uuid]['local_port']
 
-                wstun = self._startWstun(public_port, local_port)
+                wstun = self._startWstun(public_port, local_port, event="boot")
 
                 if wstun != None:
                     service_pid = wstun.pid
@@ -123,8 +144,143 @@ class ServiceManager(Module.Module):
                               + " service tunnel!"
                     LOG.error(" - " + message)
 
+                signal.signal(signal.SIGCHLD, self._zombie_hunter)
+
+            # Reactivate zombies monitoring
+            if not lightningrod.zombie_alert:
+                lightningrod.zombie_alert = True
+
         else:
             LOG.info(" --> No service tunnels to establish.")
+
+            signal.signal(signal.SIGCHLD, self._zombie_hunter)
+
+    def _zombie_hunter(self, signum, frame):
+
+        wstun_found = False
+
+        if (lightningrod.zombie_alert):
+            # print(signum); traceback.print_stack(frame)
+
+            zombie_list = []
+
+            for p in psutil.process_iter():
+                if len(p.cmdline()) == 0:
+                    if ((p.name() == "node") and
+                            (p.status() == psutil.STATUS_ZOMBIE)):
+                        print(" - process: " + str(p))
+                        zombie_list.append(p.pid)
+
+            if len(zombie_list) == 0:
+                # print(" - no action required.")
+                return
+
+            print("\nCheck killed process...")
+            print(" - Zombies found: " + str(zombie_list))
+
+            # Load services.json configuration file
+            services_conf = self._loadServicesConf()
+
+            for service_uuid in services_conf['services']:
+
+                service_pid = services_conf['services'][service_uuid]['pid']
+
+                if service_pid in zombie_list:
+
+                    message = "WSTUN zombie process ALERT!"
+                    print(" - " + str(message))
+                    LOG.debug("[WSTUN-RESTORE] --> " + str(message))
+
+                    wstun_found = True
+
+                    print(services_conf['services'][service_uuid])
+                    service_public_port = \
+                        services_conf['services'][service_uuid]['public_port']
+                    service_local_port = \
+                        services_conf['services'][service_uuid]['local_port']
+                    service_name = \
+                        services_conf['services'][service_uuid]['name']
+
+                    try:
+
+                        wstun = self._startWstun(
+                            service_public_port,
+                            service_local_port,
+                            event="zombie"
+                        )
+
+                        if wstun != None:
+                            service_pid = wstun.pid
+
+                            # UPDATE services.json file
+                            services_conf['services'][service_uuid]['pid'] = \
+                                service_pid
+                            services_conf['services'][service_uuid][
+                                'updated_at'] = \
+                                datetime.now().strftime('%Y-%m-%dT%H:%M:%S.%f')
+
+                            self._updateServiceConf(services_conf,
+                                                    service_uuid,
+                                                    output=True)
+
+                            message = "Zombie service " + str(service_name) \
+                                      + " restored on port " \
+                                      + str(service_public_port) \
+                                      + " on " + self.wstun_ip
+                            LOG.info(" - " + message + " with PID " + str(
+                                service_pid))
+
+                    except Exception:
+                        pass
+
+                    break
+
+            if not wstun_found:
+                message = "Tunnel killed by LR"
+                print(" - " + str(message))
+                # LOG.debug("[WSTUN-RESTORE] --> " + str(message))
+
+        else:
+            print("WSTUN kill event:")
+            message = "Tunnel killed by LR"
+            print(" - " + str(message))
+            # LOG.debug("[WSTUN-RESTORE] --> " + str(message))
+            # lightningrod.zombie_alert = True
+
+    def _restoreWSTUN(self, services_conf, service_uuid):
+        service_name = services_conf['services'][service_uuid]['name']
+        service_pid = services_conf['services'][service_uuid]['pid']
+        LOG.info(" - " + service_name)
+
+        # Create the reverse tunnel again
+        public_port = \
+            services_conf['services'][service_uuid]['public_port']
+        local_port = \
+            services_conf['services'][service_uuid]['local_port']
+
+        wstun = self._startWstun(public_port, local_port, event="restore")
+
+        if wstun != None:
+            service_pid = wstun.pid
+
+            # 3. Update services.json file
+            services_conf['services'][service_uuid]['pid'] = \
+                service_pid
+            services_conf['services'][service_uuid]['updated_at'] = \
+                datetime.now().strftime('%Y-%m-%dT%H:%M:%S.%f')
+
+            self._updateServiceConf(
+                services_conf,
+                service_uuid,
+                output=True
+            )
+
+            LOG.info(" --> Cloud service '" + service_name
+                     + "' tunnel restored.")
+        else:
+            message = "Error spawning " + str(service_name) \
+                      + " service tunnel!"
+            LOG.error(" - " + message)
 
     def restore(self):
         LOG.info("Cloud service tunnels to restore:")
@@ -136,58 +292,38 @@ class ServiceManager(Module.Module):
 
             wstun_process_list = []
 
+            # No zombie alert activation
+            lightningrod.zombie_alert = False
+            LOG.debug("[WSTUN-RESTORE] - Restore zombie_alert: " + str(
+                lightningrod.zombie_alert))
+
             # Collect all alive WSTUN proccesses
             for p in psutil.process_iter():
-                if len(p.cmdline()) != 0:
-                    if (p.name() == "node") and ("wstun" in p.cmdline()[1]):
+                if (p.name() == "node"):
+                    if (p.status() == psutil.STATUS_ZOMBIE):
+                        LOG.warning("WSTUN ZOMBIE: " + str(p))
                         wstun_process_list.append(p)
+                    elif ("wstun" in p.cmdline()[1]):
+                        LOG.warning("WSTUN ALIVE: " + str(p))
+                        wstun_process_list.append(p)
+
+                        psutil.Process(p.pid).kill()
+                        LOG.warning(" --> PID " + str(p.pid) + " killed!")
+
+            LOG.debug("[WSTUN-RESTORE] - WSTUN processes to restore:\n"
+                      + str(wstun_process_list))
 
             for service_uuid in services_conf['services']:
 
-                service_name = services_conf['services'][service_uuid]['name']
-                service_pid = services_conf['services'][service_uuid]['pid']
-                LOG.info(" - " + service_name)
+                Thread(
+                    target=self._restoreWSTUN,
+                    args=(services_conf, service_uuid,)
+                ).start()
+                time.sleep(2)
 
-                s_alive = False
-
-                # WSTUN is still alive
-                if len(wstun_process_list) != 0:
-
-                    for wp in wstun_process_list:
-
-                        if service_pid == wp.pid:
-                            LOG.warning(" --> the tunnel for '" + service_name
-                                        + "' is still established.")
-                            s_alive = True
-                            break
-
-                if not s_alive:
-                    # Create the reverse tunnel again
-                    public_port = services_conf['services'][service_uuid]
-                    ['public_port']
-                    local_port = services_conf['services'][service_uuid]
-                    ['local_port']
-
-                    wstun = self._startWstun(public_port, local_port)
-
-                    if wstun != None:
-                        service_pid = wstun.pid
-
-                        # 3. Update services.json file
-                        services_conf['services'][service_uuid]['pid'] = \
-                            service_pid
-                        services_conf['services'][service_uuid]['updated_at'] = \
-                            datetime.now().strftime('%Y-%m-%dT%H:%M:%S.%f')
-
-                        self._updateServiceConf(services_conf,
-                                                service_uuid, output=True)
-
-                        LOG.info(" --> Cloud service '" + service_name
-                                 + "' tunnel restored.")
-                    else:
-                        message = "Error spawning " + str(service_name) \
-                                  + " service tunnel!"
-                        LOG.error(" - " + message)
+            # Reactivate zombies monitoring
+            if not lightningrod.zombie_alert:
+                lightningrod.zombie_alert = True
 
         else:
             LOG.info(" --> No service tunnels to restore.")
@@ -211,16 +347,24 @@ class ServiceManager(Module.Module):
 
         return services_conf
 
-    def _startWstun(self, public_port, local_port):
+    def _startWstun(self, public_port, local_port, event="no-set"):
 
-        opt_reverse = "-r" + str(
-            public_port) + ":127.0.0.1:" + str(local_port)
+        opt_reverse = "-r" + str(public_port) + ":127.0.0.1:" + str(local_port)
 
         try:
             wstun = subprocess.Popen(
                 ['/usr/bin/wstun', opt_reverse, self.wstun_url],
                 stdout=subprocess.PIPE
             )
+
+            if(event != "boot"):
+                print("WSTUN start event:")
+
+            cmd_print = 'WSTUN exec: /usr/bin/wstun ' \
+                        + opt_reverse + ' ' + self.wstun_url
+            print(" - " + str(cmd_print))
+            LOG.debug(cmd_print)
+
         except Exception as err:
             LOG.error("Error spawning WSTUN process: " + str(err))
             wstun = None
@@ -254,13 +398,13 @@ class ServiceManager(Module.Module):
 
         try:
 
-            wstun = self._startWstun(public_port, local_port)
+            wstun = self._startWstun(public_port, local_port, event="enable")
 
             if wstun != None:
 
                 service_pid = wstun.pid
 
-                LOG.debug(" - WSTUN stdout: " + str(wstun.stdout))
+                # LOG.debug(" - WSTUN stdout: " + str(wstun.stdout))
 
                 # Update services.json file
                 # Load services.json configuration file
@@ -338,6 +482,16 @@ class ServiceManager(Module.Module):
 
                 try:
 
+                    # No zombie alert activation
+                    lightningrod.zombie_alert = False
+
+                    """
+                    LOG.debug(
+                        "[WSTUN-RESTORE] - disable-RPC zombie_alert: "
+                        + str(lightningrod.zombie_alert)
+                    )
+                    """
+
                     os.kill(service_pid, signal.SIGKILL)
 
                     message = "Cloud service '" \
@@ -349,6 +503,11 @@ class ServiceManager(Module.Module):
                                             output=False)
 
                     LOG.info(" - " + message)
+
+                    # Reactivate zombies monitoring
+                    if not lightningrod.zombie_alert:
+                        lightningrod.zombie_alert = True
+
                     w_msg = WM.WampSuccess(message)
 
                 except Exception as err:
@@ -362,6 +521,10 @@ class ServiceManager(Module.Module):
                         self._updateServiceConf(services_conf, service_uuid,
                                                 output=False)
 
+                        # Reactivate zombies monitoring
+                        if not lightningrod.zombie_alert:
+                            lightningrod.zombie_alert = True
+
                         w_msg = WM.WampWarning(message)
 
                     else:
@@ -369,6 +532,11 @@ class ServiceManager(Module.Module):
                         message = "Error disabling '" + str(
                             service_name) + "' service tunnel: " + str(err)
                         LOG.error(" - " + message)
+
+                        # Reactivate zombies monitoring
+                        if not lightningrod.zombie_alert:
+                            lightningrod.zombie_alert = True
+
                         w_msg = WM.WampError(message)
 
             else:
@@ -407,6 +575,14 @@ class ServiceManager(Module.Module):
 
             try:
 
+                # No zombie alert activation
+                lightningrod.zombie_alert = False
+                """
+                LOG.debug(
+                    "[WSTUN-RESTORE] - restore-RPC lightningrod.zombie_alert: "
+                    + str(lightningrod.zombie_alert))
+                """
+
                 # 1. Kill wstun process (if exists)
                 try:
                     os.kill(service_pid, signal.SIGKILL)
@@ -418,7 +594,11 @@ class ServiceManager(Module.Module):
                                 "creating new one...")
 
                 # 2. Create the reverse tunnel
-                wstun = self._startWstun(public_port, local_port)
+                wstun = self._startWstun(
+                    public_port,
+                    local_port,
+                    event="kill-restore"
+                )
 
                 if wstun != None:
                     service_pid = wstun.pid
@@ -437,12 +617,21 @@ class ServiceManager(Module.Module):
                               + str(public_port) + " on " + self.wstun_ip
                     LOG.info(" - " + message + " with PID " + str(service_pid))
 
+                    # Reactivate zombies monitoring
+                    if not lightningrod.zombie_alert:
+                        lightningrod.zombie_alert = True
+
                     w_msg = WM.WampSuccess(message)
 
                 else:
                     message = "Error spawning " + str(service_name) \
                               + " service tunnel!"
                     LOG.error(" - " + message)
+
+                    # Reactivate zombies monitoring
+                    if not lightningrod.zombie_alert:
+                        lightningrod.zombie_alert = True
+
                     w_msg = WM.WampError(message)
 
             except Exception as err:
@@ -455,7 +644,11 @@ class ServiceManager(Module.Module):
 
             local_port = service['port']
 
-            wstun = self._startWstun(public_port, local_port)
+            wstun = self._startWstun(
+                public_port,
+                local_port,
+                event="clean-restore"
+            )
 
             if wstun != None:
 

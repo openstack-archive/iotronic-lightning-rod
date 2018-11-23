@@ -19,7 +19,7 @@ import os
 import sys
 
 if len(sys.argv) < 3:
-    print('Arguments required: "<REGISTRATION-TOKEN> <WAMP-REG-AGENT-URL>',
+    print('Arguments required: <REGISTRATION-TOKEN> <WAMP-REG-AGENT-URL>',
           str(sys.argv))
 else:
     os.system('sed -i "s|\\"code\\":.*|\\"code\\": \\"'

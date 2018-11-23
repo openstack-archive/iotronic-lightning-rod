@@ -12,5 +12,6 @@ ChangeLog
 *.md
 .eggs
 dist
+STUFF/
 iotronic_lightningrod/modules/test.py
 iotronic_lightningrod/modules/vfs_*

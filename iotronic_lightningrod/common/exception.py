@@ -41,25 +41,9 @@ def manageTimeout(error_message, action):
                 LOG.warning("Iotronic RPC-ALIVE timeout error: " + str(e))
 
         else:
-            LOG.warning("Board connection call timeout: " + str(details))
+            LOG.warning("Board connection call timeout ["
+                        + str(action) + "]: " + str(details))
             utils.LR_restart()
-
-"""
-def manageTimeoutALIVE(error_message, action):
-    try:
-
-        raise TimeoutError(error_message, action)
-
-    except TimeoutError as err:
-        details = err.args[0]
-        LOG.warning("Iotronic RPC-ALIVE timeout details: " + str(details))
-        try:
-
-            utils.destroyWampSocket()
-
-        except Exception as e:
-            LOG.warning("Iotronic RPC-ALIVE timeout error: " + str(e))
-"""
 
 
 class NginxError(Exception):

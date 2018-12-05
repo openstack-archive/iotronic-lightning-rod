@@ -51,22 +51,54 @@ class ProxyManager(Proxy.Proxy):
         nginxMsg = {}
 
         try:
-            stat = subprocess.Popen('systemctl status nginx.service',
-                                    shell=True, stdout=subprocess.PIPE)
-            stdout_list = str(stat.communicate()[0]).split('\n')
-            for line in stdout_list:
-                if 'Active:' in line:
 
-                    nginxMsg['log'] = line.split('\\n')[2].replace("   ", "")
+            get_service = 'pidof systemd > /dev/null ' \
+                          '&& echo "systemd" || echo "init.d"'
+            service_cmd = subprocess.Popen(get_service,
+                                           shell=True, stdout=subprocess.PIPE)
 
-                    if '(running)' in line:
-                        nginxMsg['status'] = True
-                    else:
-                        nginxMsg['status'] = False
+            service_mng = \
+                service_cmd.communicate()[0].decode("utf-8").split("\n")[0]
 
-                    nginxMsg = json.dumps(nginxMsg)
+            if service_mng == 'init.d':
+                # print('INIT')
+                stat = subprocess.Popen('service nginx status',
+                                        shell=True, stdout=subprocess.PIPE)
+                stdout_list = stat.communicate()[0].decode("utf-8").split("\n")
 
-                    return nginxMsg
+                for line in stdout_list:
+
+                    if 'running' in line:
+
+                        nginxMsg['log'] = stdout_list[0]
+
+                        if 'running' in line:
+                            nginxMsg['status'] = True
+                        else:
+                            nginxMsg['status'] = False
+
+                        nginxMsg = json.dumps(nginxMsg)
+
+                        return nginxMsg
+
+            elif service_mng == 'systemd':
+                # print('SYSTEMD')
+                stat = subprocess.Popen('systemctl status nginx.service',
+                                        shell=True, stdout=subprocess.PIPE)
+                stdout_list = str(stat.communicate()[0]).split('\n')
+                for line in stdout_list:
+                    if 'Active:' in line:
+
+                        nginxMsg['log'] = \
+                            line.split('\\n')[2].replace("   ", "")
+                        if '(running)' in line:
+                            nginxMsg['status'] = True
+                        else:
+                            nginxMsg['status'] = False
+
+                        nginxMsg = json.dumps(nginxMsg)
+
+                        return nginxMsg
 
         except Exception as err:
             LOG.error("Error check NGINX status: " + str(err))
@@ -108,6 +140,8 @@ class ProxyManager(Proxy.Proxy):
     def _proxyReload(self):
 
         nginxMsg = {}
+
+        stat = None
 
         try:
 

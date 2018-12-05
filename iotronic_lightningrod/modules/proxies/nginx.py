@@ -107,36 +107,6 @@ class ProxyManager(Proxy.Proxy):
             nginxMsg = json.dumps(nginxMsg)
             return nginxMsg
 
-    def _proxyStatus(self):
-
-        nginxMsg = {}
-
-        try:
-
-            stat = subprocess.Popen(
-                'systemctl status nginx.service',
-                shell=True,
-                stdout=subprocess.PIPE
-            )
-            stdout_list = str(stat.communicate()[0]).split('\n')
-            for line in stdout_list:
-                if 'Active:' in line:
-                    if '(running)' in line:
-                        nginxMsg['log'] = "NGINX is running"
-                        nginxMsg['status'] = True
-                        # LOG.info("--> " + nginxMsg['log'])
-                    else:
-                        nginxMsg['log'] = "NGINX is not running"
-                        nginxMsg['status'] = False
-                        # LOG.warning("--> " + nginxMsg['log'])
-
-        except Exception as err:
-            nginxMsg['log'] = "Error check NGINX status: " + str(err)
-            nginxMsg['status'] = True
-            # LOG.error("--> " + nginxMsg['log'])
-
-        return json.dumps(nginxMsg)
-
     def _proxyReload(self):
 
         nginxMsg = {}
@@ -145,7 +115,7 @@ class ProxyManager(Proxy.Proxy):
 
         try:
 
-            stat = subprocess.call('service nginx reload', shell=True)
+            stat = subprocess.call('nginx -s reload', shell=True)
 
             if stat != 0:
                 raise NginxError(str(stat))
@@ -387,7 +357,7 @@ class ProxyManager(Proxy.Proxy):
 
         return service_list
 
-    async def NginxInfo(self):
+    async def ProxyInfo(self):
 
         rpc_name = utils.getFuncName()
         LOG.info("RPC " + rpc_name + " CALLED")
@@ -397,17 +367,7 @@ class ProxyManager(Proxy.Proxy):
 
         return w_msg.serialize()
 
-    async def NginxStatus(self):
-
-        rpc_name = utils.getFuncName()
-        LOG.info("RPC " + rpc_name + " CALLED")
-
-        message = self._proxyStatus()
-        w_msg = WM.WampSuccess(message)
-
-        return w_msg.serialize()
-
-    async def NginxReload(self):
+    async def ProxyReload(self):
 
         rpc_name = utils.getFuncName()
         LOG.info("RPC " + rpc_name + " CALLED")
@@ -417,22 +377,12 @@ class ProxyManager(Proxy.Proxy):
 
         return w_msg.serialize()
 
-    async def NginxRestart(self):
+    async def ProxyRestart(self):
 
         rpc_name = utils.getFuncName()
         LOG.info("RPC " + rpc_name + " CALLED")
 
         message = self._proxyRestart()
-        w_msg = WM.WampSuccess(message)
-
-        return w_msg.serialize()
-
-    async def NginxIotronicConf(self):
-
-        rpc_name = utils.getFuncName()
-        LOG.info("RPC " + rpc_name + " CALLED")
-
-        message = self._proxyIotronicConf()
         w_msg = WM.WampSuccess(message)
 
         return w_msg.serialize()

@@ -55,7 +55,9 @@ else:
                   + 'etc/iotronic/iotronic.conf /etc/iotronic/iotronic.conf')
         print(' - iotronic.conf - Created.')
     else:
-        print(' - iotronic.conf - Already exists.')
+        os.system('cp ' + py_dist_pack + '/iotronic_lightningrod/'
+                  + 'etc/iotronic/iotronic.conf /etc/iotronic/iotronic.conf')
+        print(' - iotronic.conf - Overwritten.')
 
 
 if not os.path.exists('/var/lib/iotronic/'):

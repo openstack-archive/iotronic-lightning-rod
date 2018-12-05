@@ -57,6 +57,9 @@ lr_opts = [
                 default=True,
                 help=('Flag for skipping the verification of the server cert '
                       '(for the auto-signed ones)')),
+    cfg.IntOpt('connection_timer',
+               default=10,
+               help=('IoTronic connection RPC timer')),
     cfg.IntOpt('alive_timer',
                default=600,
                help=('Wamp websocket check time')),
@@ -65,18 +68,8 @@ lr_opts = [
                help=('RPC alive response time threshold')),
 ]
 
-proxy_opts = [
-    cfg.StrOpt(
-        'proxy',
-        choices=[('nginx', ('nginx proxy')), ],
-        help=('Proxy for WebServices Manager')
-    ),
-]
-
 CONF = cfg.CONF
 CONF.register_opts(lr_opts)
-CONF.register_opts(proxy_opts)
-
 
 SESSION = None
 global board
@@ -194,9 +187,9 @@ async def wamp_checks(session):
 
             with timeoutALIVE(seconds=CONF.rpc_alive_timer, action="ws_alive"):
                 res = await session.call(
-                    str(board.agent) + u'.stack4things.alive'
-                    # board_uuid=board.uuid,
-                    # board_name=board.name
+                    str(board.agent) + u'.stack4things.wamp_alive',
+                    board_uuid=board.uuid,
+                    board_name=board.name
                 )
 
             LOG.debug("WampCheck attempt " + str(res))
@@ -237,7 +230,7 @@ async def IotronicLogin(board, session, details):
 
         rpc = str(board.agent) + u'.stack4things.connection'
 
-        with timeoutRPC(seconds=5, action=rpc):
+        with timeoutRPC(seconds=CONF.connection_timer, action=rpc):
             res = await session.call(
                 rpc,
                 uuid=board.uuid,
@@ -515,7 +508,7 @@ def wampConnect(wamp_conf):
 
                     rpc = str(board.agent) + u'.stack4things.connection'
 
-                    with timeoutRPC(seconds=5, action=rpc):
+                    with timeoutRPC(seconds=CONF.connection_timer, action=rpc):
                         res = await session.call(
                             rpc,
                             uuid=board.uuid,

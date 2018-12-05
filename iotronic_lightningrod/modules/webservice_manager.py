@@ -22,11 +22,6 @@ from iotronic_lightningrod.modules import Module
 from iotronic_lightningrod.modules import utils
 import iotronic_lightningrod.wampmessage as WM
 
-from oslo_config import cfg
-from oslo_log import log as logging
-LOG = logging.getLogger(__name__)
-
-CONF = cfg.CONF
 
 import importlib as imp
 import inspect
@@ -35,16 +30,36 @@ import OpenSSL.crypto
 import os
 import time
 
+from oslo_config import cfg
+from oslo_log import log as logging
+LOG = logging.getLogger(__name__)
+
+proxy_opts = [
+    cfg.StrOpt(
+        'proxy',
+        choices=[('nginx', ('nginx proxy')), ],
+        help=('Proxy for WebServices Manager')
+    ),
+]
+
+CONF = cfg.CONF
+
+webservice_group = cfg.OptGroup(
+    name='webservices', title='WebServices options'
+)
+CONF.register_group(webservice_group)
+CONF.register_opts(proxy_opts, group=webservice_group)
+
 
 class WebServiceManager(Module.Module):
 
     def __init__(self, board, session):
         super(WebServiceManager, self).__init__("WebServiceManager", board)
 
-        LOG.info(" - Proxy used: " + CONF.proxy.upper())
+        LOG.info(" - Proxy used: " + CONF.webservices.proxy.upper())
 
         try:
-            proxy_type = CONF.proxy
+            proxy_type = CONF.webservices.proxy
             path = package_path + "/modules/proxies/" + proxy_type + ".py"
 
             if os.path.exists(path):

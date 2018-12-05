@@ -19,10 +19,10 @@ import errno
 import json
 import os
 import psutil
+import pyinotify
 import signal
 import subprocess
 import time
-import traceback
 
 from datetime import datetime
 from threading import Thread
@@ -40,7 +40,24 @@ from oslo_config import cfg
 from oslo_log import log as logging
 LOG = logging.getLogger(__name__)
 
+
+wstun_opts = [
+    cfg.StrOpt(
+        'wstun_bin',
+        default='/usr/bin/wstun',
+        help=('WSTUN bin for Services Manager')
+    ),
+]
+
 CONF = cfg.CONF
+
+service_group = cfg.OptGroup(
+    name='services', title='Services options'
+)
+CONF.register_group(service_group)
+CONF.register_opts(wstun_opts, group=service_group)
+
+
 SERVICES_CONF_FILE = CONF.lightningrod_home + "/services.json"
 
 
@@ -48,6 +65,8 @@ class ServiceManager(Module.Module):
 
     def __init__(self, board, session):
         super(ServiceManager, self).__init__("ServiceManager", board)
+
+        print("\nWSTUN bin path: " + str(CONF.services.wstun_bin))
 
         self.wstun_ip = urlparse(board.wamp_config["url"])[1].split(':')[0]
         self.wstun_port = "8080"
@@ -126,6 +145,7 @@ class ServiceManager(Module.Module):
                 wstun = self._startWstun(public_port, local_port, event="boot")
 
                 if wstun != None:
+
                     service_pid = wstun.pid
 
                     # 3. Update services.json file
@@ -154,6 +174,52 @@ class ServiceManager(Module.Module):
             LOG.info(" --> No service tunnels to establish.")
 
             signal.signal(signal.SIGCHLD, self._zombie_hunter)
+
+    def restore(self):
+        LOG.info("Cloud service tunnels to restore:")
+
+        # Load services.json configuration file
+        services_conf = self._loadServicesConf()
+
+        if len(services_conf['services']) != 0:
+
+            wstun_process_list = []
+
+            # No zombie alert activation
+            lightningrod.zombie_alert = False
+            LOG.debug("[WSTUN-RESTORE] - Restore zombie_alert: " + str(
+                lightningrod.zombie_alert))
+
+            # Collect all alive WSTUN proccesses
+            for p in psutil.process_iter():
+                if (p.name() == "node"):
+                    if (p.status() == psutil.STATUS_ZOMBIE):
+                        LOG.warning("WSTUN ZOMBIE: " + str(p))
+                        wstun_process_list.append(p)
+                    elif ("wstun" in p.cmdline()[1]):
+                        LOG.warning("WSTUN ALIVE: " + str(p))
+                        wstun_process_list.append(p)
+
+                        psutil.Process(p.pid).kill()
+                        LOG.warning(" --> PID " + str(p.pid) + " killed!")
+
+            LOG.debug("[WSTUN-RESTORE] - WSTUN processes to restore:\n"
+                      + str(wstun_process_list))
+
+            for service_uuid in services_conf['services']:
+
+                Thread(
+                    target=self._restoreWSTUN,
+                    args=(services_conf, service_uuid,)
+                ).start()
+                time.sleep(2)
+
+            # Reactivate zombies monitoring
+            if not lightningrod.zombie_alert:
+                lightningrod.zombie_alert = True
+
+        else:
+            LOG.info(" --> No service tunnels to restore.")
 
     def _zombie_hunter(self, signum, frame):
 
@@ -282,52 +348,6 @@ class ServiceManager(Module.Module):
                       + " service tunnel!"
             LOG.error(" - " + message)
 
-    def restore(self):
-        LOG.info("Cloud service tunnels to restore:")
-
-        # Load services.json configuration file
-        services_conf = self._loadServicesConf()
-
-        if len(services_conf['services']) != 0:
-
-            wstun_process_list = []
-
-            # No zombie alert activation
-            lightningrod.zombie_alert = False
-            LOG.debug("[WSTUN-RESTORE] - Restore zombie_alert: " + str(
-                lightningrod.zombie_alert))
-
-            # Collect all alive WSTUN proccesses
-            for p in psutil.process_iter():
-                if (p.name() == "node"):
-                    if (p.status() == psutil.STATUS_ZOMBIE):
-                        LOG.warning("WSTUN ZOMBIE: " + str(p))
-                        wstun_process_list.append(p)
-                    elif ("wstun" in p.cmdline()[1]):
-                        LOG.warning("WSTUN ALIVE: " + str(p))
-                        wstun_process_list.append(p)
-
-                        psutil.Process(p.pid).kill()
-                        LOG.warning(" --> PID " + str(p.pid) + " killed!")
-
-            LOG.debug("[WSTUN-RESTORE] - WSTUN processes to restore:\n"
-                      + str(wstun_process_list))
-
-            for service_uuid in services_conf['services']:
-
-                Thread(
-                    target=self._restoreWSTUN,
-                    args=(services_conf, service_uuid,)
-                ).start()
-                time.sleep(2)
-
-            # Reactivate zombies monitoring
-            if not lightningrod.zombie_alert:
-                lightningrod.zombie_alert = True
-
-        else:
-            LOG.info(" --> No service tunnels to restore.")
-
     def _loadServicesConf(self):
         """Load services.json JSON configuration.
 
@@ -347,23 +367,105 @@ class ServiceManager(Module.Module):
 
         return services_conf
 
+    def _wstunMon(self, wstun):
+
+        wfd_check = True
+
+        while (wfd_check):
+            try:
+
+                wp = psutil.Process(int(wstun.pid))
+                wstun_fd = wp.connections()[0].fd
+                if len(wp.connections()) != 0:
+                    LOG.debug("WSTUN alive socket: " + str(wp.connections()))
+                wfd_check = False
+
+            except IndexError as err:
+                # LOG.error(str(err) + " - RETRY...")
+                pass
+
+            time.sleep(1)
+
+        class EventProcessor(pyinotify.ProcessEvent):
+            _methods = [
+                # "IN_CREATE",
+                # "IN_OPEN",
+                # "IN_ACCESS",
+                # "IN_ATTRIB",
+                "IN_CLOSE_NOWRITE",
+                "IN_CLOSE_WRITE",
+                "IN_DELETE",
+                "IN_DELETE_SELF",
+                # "IN_IGNORED",
+                # "IN_MODIFY",
+                # "IN_MOVE_SELF",
+                # "IN_MOVED_FROM",
+                # "IN_MOVED_TO",
+                # "IN_Q_OVERFLOW",
+                # "IN_UNMOUNT",
+                "default"
+            ]
+
+        def process_generator(cls, method):
+            def _method_name(self, event):
+                if(event.maskname == "IN_CLOSE_WRITE"):
+                    LOG.info("WSTUN FD SOCKET CLOSED: " + str(event.pathname))
+                    LOG.debug(
+                        "\nMethod name: process_{}()\n"
+                        "Path name: {}\n"
+                        "Event Name: {}\n".format(
+                            method, event.pathname, event.maskname
+                        )
+                    )
+
+                    os.kill(wstun.pid, signal.SIGKILL)
+
+            _method_name.__name__ = "process_{}".format(method)
+            setattr(cls, _method_name.__name__, _method_name)
+
+        for method in EventProcessor._methods:
+            process_generator(EventProcessor, method)
+
+        watch_manager = pyinotify.WatchManager()
+        event_notifier = pyinotify.ThreadedNotifier(
+            watch_manager, EventProcessor()
+        )
+
+        watch_this = os.path.abspath(
+            "/proc/" + str(wstun.pid) + "/fd/" + str(wstun_fd)
+        )
+        watch_manager.add_watch(watch_this, pyinotify.ALL_EVENTS)
+        event_notifier.start()
+
     def _startWstun(self, public_port, local_port, event="no-set"):
 
         opt_reverse = "-r" + str(public_port) + ":127.0.0.1:" + str(local_port)
 
         try:
             wstun = subprocess.Popen(
-                ['/usr/bin/wstun', opt_reverse, self.wstun_url],
+                [CONF.services.wstun_bin, opt_reverse, self.wstun_url],
                 stdout=subprocess.PIPE
             )
 
             if(event != "boot"):
                 print("WSTUN start event:")
 
-            cmd_print = 'WSTUN exec: /usr/bin/wstun ' \
+            cmd_print = 'WSTUN exec: ' + str(CONF.services.wstun_bin) \
                         + opt_reverse + ' ' + self.wstun_url
             print(" - " + str(cmd_print))
             LOG.debug(cmd_print)
+
+            # WSTUN MON
+            # ##############################################################
+
+            Thread(
+                target=self._wstunMon,
+                args=(wstun,)
+            ).start()
+
+            # self._wstunMon(wstun)
+
+            # ##############################################################
 
         except Exception as err:
             LOG.error("Error spawning WSTUN process: " + str(err))

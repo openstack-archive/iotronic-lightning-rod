@@ -259,7 +259,6 @@ async def IotronicLogin(board, session, details):
                 # reconnection = False
 
             else:
-                LOG.error(" - Access denied to Iotronic.")
                 Bye()
 
     except exception.ApplicationError as e:

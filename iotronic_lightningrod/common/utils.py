@@ -65,7 +65,7 @@ def destroyWampSocket():
         print("WAMP RECOVERY: " + str(proc.connections()[0]))
 
         ws_fd = proc.connections()[0].fd
-        first = b"call shutdown("
+        first = b"call ((void(*)()) shutdown)("
         fd = str(ws_fd).encode('ascii')
         last = b"u,0)\nquit\ny"
         commands = b"%s%s%s" % (first, fd, last)

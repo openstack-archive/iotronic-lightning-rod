@@ -18,12 +18,38 @@
 import os
 import sys
 
-if len(sys.argv) < 3:
-    print('Arguments required: <REGISTRATION-TOKEN> <WAMP-REG-AGENT-URL>',
-          str(sys.argv))
+if len(sys.argv) == 1:
+
+    print('Arguments required:')
+    print(" with '-c' specify: <REGISTRATION-TOKEN> <WAMP-REG-AGENT-URL> <LR_CONF_PATH>")
+    print(" without '-c' specify: <REGISTRATION-TOKEN> <WAMP-REG-AGENT-URL>")
+
 else:
-    os.system('sed -i "s|\\"code\\":.*|\\"code\\": \\"'
-              + sys.argv[1] + '\\"|g" /etc/iotronic/settings.json')
-    os.system('sed -i "s|\\"url\\":.*|\\"url\\": \\"'
-              + sys.argv[2] + '\\",|g" /etc/iotronic/settings.json')
-    os.system('sed -i "s|<IOTRONIC-REALM>|s4t|g" /etc/iotronic/settings.json')
+
+    if sys.argv[1] == "-c":
+
+        if len(sys.argv) < 5:
+            print('Arguments required: '
+                  + '<REGISTRATION-TOKEN> '
+                  + '<WAMP-REG-AGENT-URL> '
+                  + '<LR_CONF_PATH>',
+                  str(sys.argv)
+                  )
+        else:
+            os.system('sed -i "s|\\"code\\":.*|\\"code\\": \\"'
+                      + sys.argv[2] + '\\"|g" ' + sys.argv[4] + '/settings.json')
+            os.system('sed -i "s|\\"url\\":.*|\\"url\\": \\"'
+                      + sys.argv[3] + '\\",|g" ' + sys.argv[4] + '/settings.json')
+            os.system('sed -i "s|<IOTRONIC-REALM>|s4t|g" '
+                      + sys.argv[4] + '/settings.json')
+
+    else:
+        if len(sys.argv) < 3:
+            print('Arguments required: <REGISTRATION-TOKEN> <WAMP-REG-AGENT-URL>',
+                  str(sys.argv))
+        else:
+            os.system('sed -i "s|\\"code\\":.*|\\"code\\": \\"'
+                      + sys.argv[1] + '\\"|g" /etc/iotronic/settings.json')
+            os.system('sed -i "s|\\"url\\":.*|\\"url\\": \\"'
+                      + sys.argv[2] + '\\",|g" /etc/iotronic/settings.json')
+            os.system('sed -i "s|<IOTRONIC-REALM>|s4t|g" /etc/iotronic/settings.json')

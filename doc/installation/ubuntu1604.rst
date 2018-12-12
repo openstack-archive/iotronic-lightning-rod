@@ -6,35 +6,35 @@ container). Everything needs to be run as root.
 
 Install Lightning-rod
 ~~~~~~~~~~~~~~~~~~~~~
-
 ::
 
     pip3 install iotronic-lightningrod
 
-Deployment
-''''''''''
-
+Iotronic deployment
+'''''''''''''''''''
 ::
+
     lr_install
 
 
 Iotronic setup
 ''''''''''''''
-
 ::
+
     lr_configure
 
 Arguments required:
-    <REGISTRATION-TOKEN> : token released by IoTronic registration procedure
-    <WAMP-REG-AGENT-URL> : IoTronic Crossbar server URL
+   * <REGISTRATION-TOKEN> , token released by IoTronic registration procedure
+   * <WAMP-REG-AGENT-URL> , IoTronic Crossbar server WAMP URL:
+   ws(s)://<IOTRONIC-CROSSBAR-IP>:<IOTRONIC-CROSSBAR-PORT>/
 
 e.g.
 ::
-    lr_configure 000001 ws(s)://<IOTRONIC-CROSSBAR-IP>:<IOTRONIC-CROSSBAR-PORT>/
+
+    lr_configure <REGISTRATION-TOKEN> <WAMP-REG-AGENT-URL>
 
 Execution:
 ~~~~~~~~~~
-
 ::
 
     systemctl start lightning-rod.service

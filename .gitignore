@@ -9,7 +9,6 @@ build
 AUTHORS
 Authors
 ChangeLog
-*.md
 .eggs
 dist
 STUFF/

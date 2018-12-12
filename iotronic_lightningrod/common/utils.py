@@ -77,6 +77,7 @@ def destroyWampSocket():
 
     except Exception as e:
         LOG.warning("RPC-ALIVE - destroyWampSocket error: " + str(e))
+        LR_restart()
 
 
 def get_version(package):

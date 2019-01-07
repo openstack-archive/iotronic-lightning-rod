@@ -209,7 +209,7 @@ class ProxyManager(Proxy.Proxy):
 
             nginx_board_conf_file = nginx_path + "/" + board_dns + ".conf"
             nginx_board_conf = '''server {{
-                listen              80;
+                listen              50000;
                 server_name    {0};
             }}
             '''.format(board_dns)
@@ -227,6 +227,7 @@ class ProxyManager(Proxy.Proxy):
                       "--authenticator webroot " \
                       "--installer nginx " \
                       "-w /var/www/html/ " \
+                      "--tls-sni-01-port 60000 " \
                       "--domain " + board_dns + " " \
                       "--agree-tos " \
                       "--email " + owner_email
@@ -256,7 +257,7 @@ class ProxyManager(Proxy.Proxy):
 
             service_path = nginx_path + "/" + service_dns + ".conf"
             string = '''server {{
-            listen              80;
+            listen              50000;
             server_name         {0};
 
                 proxy_set_header Host $http_host;
@@ -289,6 +290,7 @@ class ProxyManager(Proxy.Proxy):
                       "--redirect " \
                       "--authenticator webroot " \
                       "--installer nginx -w /var/www/html/ " \
+                      "--tls-sni-01-port 60000 " \
                       "--domain " + str(dns_list)
 
             command = "/usr/bin/certbot " \
@@ -297,6 +299,7 @@ class ProxyManager(Proxy.Proxy):
                       "--authenticator webroot " \
                       "--installer nginx -w /var/www/html/ " \
                       "--cert-name " + str(board_dns) + " " \
+                      "--tls-sni-01-port 60000 " \
                       "--domain " + str(dns_list)
 
             LOG.debug(command)
@@ -349,6 +352,7 @@ class ProxyManager(Proxy.Proxy):
                           "--redirect " \
                           "--authenticator webroot " \
                           "--installer nginx -w /var/www/html/ " \
+                          "--tls-sni-01-port 60000 " \
                           "--domain " + str(dns_list)
 
                 LOG.debug(command)

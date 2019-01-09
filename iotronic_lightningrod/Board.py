@@ -27,6 +27,9 @@ CONF = cfg.CONF
 
 SETTINGS = '/etc/iotronic/settings.json'
 
+# global FIRST_BOOT
+FIRST_BOOT = False
+
 
 class Board(object):
 
@@ -107,14 +110,26 @@ class Board(object):
 
         except Exception as err:
             if str(err) != 'uuid':
-                LOG.warning("settings.json file exception: " + str(err))
+                if self.status == None:
+                    LOG.warning("settings.json file exception: " + str(err))
 
             # STATUS REGISTERED
             try:
                 self.code = board_config['code']
-                LOG.info('First registration board settings: ')
-                LOG.info(' - code: ' + str(self.code))
-                self.getWampAgent(self.iotronic_config)
+
+                if self.code == "<REGISTRATION-TOKEN>":
+                    # LR start to waiting for first configuration
+                    global FIRST_BOOT
+                    if FIRST_BOOT == False:
+                        FIRST_BOOT = True
+                        LOG.info("FIRST BOOT procedure started")
+                        self.status = "first_boot"
+
+                else:
+                    LOG.info('First registration board settings: ')
+                    LOG.info(' - code: ' + str(self.code))
+                    self.getWampAgent(self.iotronic_config)
+
             except Exception as err:
                 LOG.error("Wrong code: " + str(err))
                 os._exit(1)

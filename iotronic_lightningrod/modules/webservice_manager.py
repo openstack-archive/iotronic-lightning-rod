@@ -17,7 +17,6 @@ __author__ = "Nicola Peditto <n.peditto@gmail.com>"
 
 from iotronic_lightningrod.config import package_path
 from iotronic_lightningrod.lightningrod import RPC_proxies
-from iotronic_lightningrod.lightningrod import SESSION
 from iotronic_lightningrod.modules import Module
 from iotronic_lightningrod.modules import utils
 import iotronic_lightningrod.wampmessage as WM
@@ -57,6 +56,8 @@ class WebServiceManager(Module.Module):
         super(WebServiceManager, self).__init__("WebServiceManager", board)
 
         LOG.info(" - Proxy used: " + CONF.webservices.proxy.upper())
+
+        self.session = session
 
         try:
             proxy_type = CONF.webservices.proxy
@@ -168,11 +169,11 @@ class WebServiceManager(Module.Module):
 
                 # LOG.debug(" --> " + str(rpc_addr))
                 if not meth[0].startswith('_'):
-                    SESSION.register(meth[1], rpc_addr)
+                    self.session.register(meth[1], rpc_addr)
                     LOG.info("   --> " + str(meth[0]))
 
-    async def ExposeWebservice(self, board_dns, service_dns,
-                               local_port, dns_list):
+    async def ExposeWebservice(self,
+                               board_dns, service_dns, local_port, dns_list):
 
         rpc_name = utils.getFuncName()
         LOG.info("RPC " + rpc_name + " CALLED")

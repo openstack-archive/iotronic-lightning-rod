@@ -8,6 +8,9 @@ include scripts/lr_install
 include scripts/lr_configure
 include scripts/device_bkp_rest
 include iotronic_lightningrod/proxies/configs/*
+include iotronic_lightningrod/modules/web/static/css/*
+include iotronic_lightningrod/modules/web/static/js/*
+include iotronic_lightningrod/modules/web/templates/*
 
 include AUTHORS
 include ChangeLog

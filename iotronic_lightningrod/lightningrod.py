@@ -32,12 +32,15 @@ import signal
 import ssl
 from stevedore import extension
 import sys
+import time
 import txaio
 
 from pip._vendor import pkg_resources
 
 # IoTronic imports
 from iotronic_lightningrod.Board import Board
+from iotronic_lightningrod.Board import FIRST_BOOT
+
 from iotronic_lightningrod.common.exception import timeoutALIVE
 from iotronic_lightningrod.common.exception import timeoutRPC
 from iotronic_lightningrod.common import utils
@@ -71,6 +74,7 @@ lr_opts = [
 CONF = cfg.CONF
 CONF.register_opts(lr_opts)
 
+global SESSION
 SESSION = None
 global board
 board = None
@@ -81,6 +85,7 @@ RPC_proxies = {}
 zombie_alert = True
 
 # ASYNCIO
+global loop
 loop = None
 component = None
 txaio.start_logging(level="info")
@@ -110,6 +115,8 @@ class LightningRod(object):
         CONF(project='iotronic')
         logging.setup(CONF, DOMAIN)
 
+        self.w = None
+
         if (utils.checkIotronicConf(CONF)):
 
             if CONF.debug:
@@ -133,8 +140,20 @@ class LightningRod(object):
             global board
             board = Board()
 
-            self.w = WampManager(board.wamp_config)
+            # Start REST server
+            singleModuleLoader("rest", session=None)
 
+            if(board.status == "first_boot"):
+                LOG.info("LR FIRST BOOT: waiting for first configuration...")
+
+            while (board.status == "first_boot"):
+                time.sleep(5)
+
+                # LR was configured and we have to load its new configuration
+                board.loadSettings()
+
+            # Start Wamp Manager
+            self.w = WampManager(board.wamp_config)
             self.w.start()
 
         else:
@@ -146,7 +165,8 @@ class LightningRod(object):
             # No zombie alert activation
             zombie_alert = False
             LOG.info("LR is shutting down...")
-            self.w.stop()
+            if self.w != None:
+                self.w.stop()
             Bye()
         except Exception as e:
             LOG.error("Error closing LR")
@@ -175,6 +195,46 @@ class WampManager(object):
         # Canceling pending tasks and stopping the loop
         asyncio.gather(*asyncio.Task.all_tasks()).cancel()
         LOG.info("WAMP server stopped!")
+
+
+def iotronic_status(board_status):
+
+    if board_status != "first_boot":
+        # WS ALIVE
+        try:
+            alive = asyncio.run_coroutine_threadsafe(
+                wamp_singleCheck(SESSION),
+                loop
+            )
+            alive = alive.result()
+
+        except Exception as e:
+            LOG.error(" - Iotronic check: " + str(e))
+            alive = e
+    else:
+        alive = "Not connected!"
+
+    return alive
+
+
+async def wamp_singleCheck(session):
+    try:
+
+        # LOG.debug("ALIVE sending...")
+
+        with timeoutALIVE(seconds=CONF.rpc_alive_timer, action="ws_alive"):
+            res = await session.call(
+                str(board.agent) + u'.stack4things.wamp_alive',
+                board_uuid=board.uuid,
+                board_name=board.name
+            )
+
+        LOG.debug("WampCheck attempt " + str(res))
+
+    except exception.ApplicationError as e:
+        LOG.error(" - Iotronic Connection RPC error: " + str(e))
+
+    return res
 
 
 async def wamp_checks(session):
@@ -594,6 +654,8 @@ def wampConnect(wamp_conf):
                 "\n- connected = " + str(connected)
             )
 
+            board.session_id = "N/A"
+
             if board.status == "operative" and reconnection is False:
 
                 #################
@@ -696,6 +758,58 @@ def moduleWampRegister(session, meth_list):
                     LOG.info("   --> " + str(meth[0]))
 
 
+def singleModuleLoader(module_name, session=None):
+    ep = []
+
+    for ep in pkg_resources.iter_entry_points(group='s4t.modules'):
+        # LOG.info(" - " + str(ep))
+        pass
+
+    if not ep:
+
+        LOG.info("No modules available!")
+        sys.exit()
+
+    else:
+        modules = extension.ExtensionManager(
+            namespace='s4t.modules',
+            # invoke_on_load=True,
+            # invoke_args=(session,),
+        )
+
+        LOG.info('Module "' + module_name + '" loading:')
+
+        for ext in modules.extensions:
+
+            if (ext.name == 'rest'):
+
+                mod = ext.plugin(board, session)
+
+                global MODULES
+                MODULES[mod.name] = mod
+
+                # Methods list for each module
+                meth_list = inspect.getmembers(mod, predicate=inspect.ismethod)
+
+                global RPC
+                RPC[mod.name] = meth_list
+
+                if len(meth_list) == 3:
+                    # there are at least two methods for each module:
+                    # "__init__" and "finalize"
+
+                    LOG.info(" - No RPC to register for "
+                             + str(ext.name) + " module!")
+
+                else:
+                    if(session != None):
+                        LOG.info(" - RPC list of " + str(mod.name) + ":")
+                        moduleWampRegister(SESSION, meth_list)
+
+                # Call the finalize procedure for each module
+                mod.finalize()
+
+
 def modulesLoader(session):
     """Modules loader method thorugh stevedore libraries.
 
@@ -727,36 +841,41 @@ def modulesLoader(session):
 
         for ext in modules.extensions:
 
-            # LOG.debug(ext.name)
+            LOG.debug(ext.name)
 
             if (ext.name == 'gpio') & (board.type == 'server'):
                 LOG.info("- GPIO module disabled for 'server' devices")
 
             else:
-                mod = ext.plugin(board, session)
 
-                global MODULES
-                MODULES[mod.name] = mod
+                if ext.name != "rest":
 
-                # Methods list for each module
-                meth_list = inspect.getmembers(mod, predicate=inspect.ismethod)
+                    mod = ext.plugin(board, session)
 
-                global RPC
-                RPC[mod.name] = meth_list
+                    global MODULES
+                    MODULES[mod.name] = mod
 
-                if len(meth_list) == 3:
-                    # there are at least two methods for each module:
-                    # "__init__" and "finalize"
+                    # Methods list for each module
+                    meth_list = inspect.getmembers(
+                        mod, predicate=inspect.ismethod
+                    )
 
-                    LOG.info(" - No RPC to register for "
-                             + str(ext.name) + " module!")
+                    global RPC
+                    RPC[mod.name] = meth_list
 
-                else:
-                    LOG.info(" - RPC list of " + str(mod.name) + ":")
-                    moduleWampRegister(SESSION, meth_list)
+                    if len(meth_list) == 3:
+                        # there are at least two methods for each module:
+                        # "__init__" and "finalize"
 
-                # Call the finalize procedure for each module
-                mod.finalize()
+                        LOG.info(" - No RPC to register for "
+                                 + str(ext.name) + " module!")
+
+                    else:
+                        LOG.info(" - RPC list of " + str(mod.name) + ":")
+                        moduleWampRegister(SESSION, meth_list)
+
+                    # Call the finalize procedure for each module
+                    mod.finalize()
 
         LOG.info("Lightning-rod modules loaded.")
         LOG.info("\n\nListening...")

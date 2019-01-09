@@ -27,7 +27,6 @@ from datetime import datetime
 
 from iotronic_lightningrod.config import package_path
 from iotronic_lightningrod.lightningrod import RPC_devices
-from iotronic_lightningrod.lightningrod import SESSION
 from iotronic_lightningrod.modules import Module
 from iotronic_lightningrod.modules import utils
 import iotronic_lightningrod.wampmessage as WM
@@ -88,13 +87,13 @@ class DeviceManager(Module.Module):
         for meth in dev_meth_list:
 
             if (meth[0] != "__init__") & (meth[0] != "finalize"):
-                # LOG.info(" - " + str(meth[0]))
+                LOG.info(" - " + str(meth[0]))
                 # rpc_addr = u'iotronic.' + board.uuid + '.' + meth[0]
                 rpc_addr = u'iotronic.' + str(board.session_id) + '.' + \
                            board.uuid + '.' + meth[0]
 
                 # LOG.debug(" --> " + str(rpc_addr))
-                SESSION.register(meth[1], rpc_addr)
+                self.device_session.register(meth[1], rpc_addr)
 
                 LOG.info("   --> " + str(meth[0]) + " registered!")
 
@@ -164,17 +163,22 @@ class DeviceManager(Module.Module):
         rpc_name = utils.getFuncName()
         LOG.info("RPC " + rpc_name + " CALLED")
 
-        command = "ifconfig"
-
-        out = subprocess.Popen(
-            command,
-            shell=True,
-            stdout=subprocess.PIPE
-        )
-
-        output = out.communicate()[0].decode('utf-8').strip()
-
-        message = str(output)
+        message = getIfconfig()
         w_msg = WM.WampSuccess(message)
 
         return w_msg.serialize()
+
+
+def getIfconfig():
+
+    command = "ifconfig"
+
+    out = subprocess.Popen(
+        command,
+        shell=True,
+        stdout=subprocess.PIPE
+    )
+
+    output = str(out.communicate()[0].decode('utf-8').strip())
+
+    return output

@@ -16,6 +16,10 @@ RUN npm install -g --unsafe @mdslab/wstun@1.0.9 && npm cache --force clean
 
 RUN pip3 install iotronic-lightningrod
 
+RUN sed -i "s|listen 80 default_server;|listen 50000 default_server;|g" /etc/nginx/sites-available/default
+RUN sed -i "s|80 default_server;|50000 default_server;|g" /etc/nginx/sites-available/default
+
+COPY data/lr_configure /usr/local/bin/lr_configure
 COPY data/lr_install /usr/local/bin/lr_install
 COPY data/startLR /usr/local/bin/startLR
 

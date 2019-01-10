@@ -113,7 +113,6 @@ class Board(object):
                 if self.status == None:
                     LOG.warning("settings.json file exception: " + str(err))
 
-            # STATUS REGISTERED
             try:
                 self.code = board_config['code']
 
@@ -124,8 +123,8 @@ class Board(object):
                         FIRST_BOOT = True
                         LOG.info("FIRST BOOT procedure started")
                         self.status = "first_boot"
-
                 else:
+                    self.status = None  # change to pre-registration status
                     LOG.info('First registration board settings: ')
                     LOG.info(' - code: ' + str(self.code))
                     self.getWampAgent(self.iotronic_config)
@@ -144,7 +143,8 @@ class Board(object):
             LOG.info('WAMP Agent settings:')
 
         except Exception:
-            if (self.status is None) | (self.status == "registered"):
+            if (self.status is None) | (self.status == "registered") | \
+                    (self.status == "first_boot"):
                 self.wamp_config = \
                     config['iotronic']['wamp']['registration-agent']
                 LOG.info('Registration Agent settings:')

@@ -592,7 +592,6 @@ class ServiceManager(Module.Module):
                 "WSTUN server is offline! Retry " + str(count_ws) + "/5..."
             )
             time.sleep(randint(3, 6))
-            global ws_server_alive
             ws_server_alive = sock.connect_ex(
                 (self.wstun_ip, int(self.wstun_port))
             )

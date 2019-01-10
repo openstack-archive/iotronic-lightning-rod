@@ -78,6 +78,10 @@ class RestManager(Module.Module):
             else:
                 wstun_status = "Offline"
 
+            service_list = service_manager.services_list()
+            if service_list == "":
+                service_list = "no services exposed!"
+
             info = {
                 'board_id': board.uuid,
                 'board_name': board.name,
@@ -88,7 +92,7 @@ class RestManager(Module.Module):
                 'wstun_status': wstun_status,
                 'board_reg_status': str(board.status),
                 'iotronic_status': str(iotronic_status(board.status)),
-                'service_list': str(service_manager.services_list())
+                'service_list': str(service_list)
             }
 
             return render_template('status.html', **info)

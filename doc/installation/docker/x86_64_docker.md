@@ -7,6 +7,6 @@ GitHub repo:
 ```
 docker run -d --privileged \
 -v lr_var:/var/lib/iotronic -v lr_le:/etc/letsencrypt/ \
---net=host --restart unless-stopped \
---name=lightning-rod mdslab/openstack-iotronic-lightning-rod
+-v lr_nginx:/etc/nginx -v lr_confs:/etc/iotronic/ \
+--net=host --restart unless-stopped --name=lightning-rod mdslab/openstack-iotronic-lightning-rod
 ```

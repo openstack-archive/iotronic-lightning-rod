@@ -44,6 +44,7 @@ from iotronic_lightningrod.Board import FIRST_BOOT
 from iotronic_lightningrod.common.exception import timeoutALIVE
 from iotronic_lightningrod.common.exception import timeoutRPC
 from iotronic_lightningrod.common import utils
+from iotronic_lightningrod.common.utils import get_socket_info
 from iotronic_lightningrod.common.utils import get_version
 import iotronic_lightningrod.wampmessage as WM
 
@@ -76,8 +77,16 @@ CONF.register_opts(lr_opts)
 
 global SESSION
 SESSION = None
+
+global lr_mac
+lr_mac = None
+
+global wport
+wport = None
+
 global board
 board = None
+
 reconnection = False
 RPC = {}
 RPC_devices = {}
@@ -144,6 +153,11 @@ class LightningRod(object):
             singleModuleLoader("rest", session=None)
 
             if(board.status == "first_boot"):
+
+                os.system("pkill -f 'node /usr/bin/wstun'")
+                LOG.debug("OLD tunnels cleaned!")
+                print("OLD tunnels cleaned!")
+
                 LOG.info("LR FIRST BOOT: waiting for first configuration...")
 
             while (board.status == "first_boot"):
@@ -184,11 +198,15 @@ class WampManager(object):
 
     def start(self):
         LOG.info(" - starting Lightning-rod WAMP server...")
+        try:
+            if(board.status != "url_wamp_error"):
+                global loop
+                loop = asyncio.get_event_loop()
+                component.start(loop)
+                loop.run_forever()
 
-        global loop
-        loop = asyncio.get_event_loop()
-        component.start(loop)
-        loop.run_forever()
+        except Exception as err:
+            LOG.error(" - Error starting asyncio-component: " + str(err))
 
     def stop(self):
         LOG.info("Stopping WAMP agent server...")
@@ -199,7 +217,10 @@ class WampManager(object):
 
 def iotronic_status(board_status):
 
-    if board_status != "first_boot":
+    if (board_status != "first_boot") \
+            and (board_status != "already-registered") \
+            and (board_status != "url_wamp_error"):
+
         # WS ALIVE
         try:
             alive = asyncio.run_coroutine_threadsafe(
@@ -294,7 +315,12 @@ async def IotronicLogin(board, session, details):
             res = await session.call(
                 rpc,
                 uuid=board.uuid,
-                session=details.session
+                session=details.session,
+                info={
+                    "lr_version": str(get_version("iotronic-lightningrod")),
+                    "mac_addr": str(lr_mac)
+                }
+
             )
 
             w_msg = WM.deserialize(res)
@@ -360,7 +386,10 @@ def wampConnect(wamp_conf):
 
         if wurl_list[0] == "wss":
             is_wss = True
+
         whost = wurl_list[1].replace('/', '')
+
+        global wport
         wport = int(wurl_list[2].replace('/', ''))
 
         if is_wss and CONF.skip_cert_verify:
@@ -404,7 +433,14 @@ def wampConnect(wamp_conf):
 
             """
 
-            print("WAMP SOCKET: " + str(psutil.Process().connections()[0]))
+            global wport
+            global lr_mac
+            sock_bundle = get_socket_info(wport)
+
+            if sock_bundle == "N/A":
+                lr_mac = sock_bundle
+            else:
+                lr_mac = sock_bundle[2]
 
             global connected
             connected = True
@@ -440,6 +476,15 @@ def wampConnect(wamp_conf):
             LOG.info("   - Session ID: " + str(board.session_id))
             print(" - Session ID: " + str(board.session_id))
             LOG.info("   - Board status:  " + str(board.status))
+
+            if sock_bundle == "N/A":
+                LOG.info("   - Socket info:" + str(sock_bundle))
+            else:
+                LOG.info("   - Socket info: %s %s %s",
+                         str(sock_bundle[0]),
+                         str(sock_bundle[1]),
+                         str(sock_bundle[2])
+                         )
 
             if reconnection is False:
 
@@ -494,9 +539,11 @@ def wampConnect(wamp_conf):
                             utils.LR_restart()
 
                         else:
-                            LOG.error("Registration denied by Iotronic: "
+                            LOG.error("Registration denied by Iotronic - " +
+                                      "board already registered: "
                                       + str(w_msg.message))
-                            Bye()
+                            board.status = "already-registered"
+                            # Bye()
 
                     except exception.ApplicationError as e:
                         LOG.error("IoTronic registration error: " + str(e))
@@ -571,7 +618,13 @@ def wampConnect(wamp_conf):
                         res = await session.call(
                             rpc,
                             uuid=board.uuid,
-                            session=details.session
+                            session=details.session,
+                            info={
+                                "lr_version": str(
+                                    get_version("iotronic-lightningrod")),
+                                "mac_addr": str(lr_mac)
+                            }
+
                         )
 
                     w_msg = WM.deserialize(res)
@@ -725,9 +778,14 @@ def wampConnect(wamp_conf):
             else:
                 LOG.error("Reconnection wrong status!")
 
+    except IndexError as err:
+            LOG.error(" - Error parsing WAMP url: " + str(err))
+            LOG.error(" --> port or address not specified")
+            board.status = "url_wamp_error"
+
     except Exception as err:
         LOG.error(" - WAMP connection error: " + str(err))
-        Bye()
+        # Bye()
 
 
 def moduleWampRegister(session, meth_list):

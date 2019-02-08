@@ -1,7 +1,7 @@
 FROM ubuntu:bionic
 
 RUN  apt-get update && apt-get install -y \
- socat dsniff git ntpdate python build-essential vim lsof gdb screen python3 python3-setuptools python3-pip npm
+ socat dsniff git ntpdate python build-essential vim lsof gdb screen python3 python3-setuptools python3-pip npm net-tools
 
 ENV TZ 'Europe/Rome'
 ENV DEBIAN_FRONTEND=noninteractive

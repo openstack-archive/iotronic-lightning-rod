@@ -1,19 +1,324 @@
 {% extends 'base.html' %}
 
 {% block header %}
-  <h3>{% block title %}First configuration{% endblock %}</h3>
+
+<h3>
+{% block title %}
+{% if session['status'] == 'first_boot' %}
+  First configuration
+{% else %}
+  Configuration
+{% endif %}
+{% endblock %}
+</h3>
+
+
+<script type=text/javascript>
+
+$(function(){
+    $('.rst_settings_in').on('change',function(){
+        var fileName = $(this).val().replace(/\\/g, '/').replace(/.*\//, '');
+        $('.rst_settings_lb').html(fileName);
+    });
+});
+
+
+$(function(){
+    $('.dev_rst_in').on('change',function(){
+        var fileName = $(this).val().replace(/\\/g, '/').replace(/.*\//, '');
+        $('.dev_rst_lb').html(fileName);
+    });
+});
+
+/*
+$(function(){
+    document.getElementById('settingsInputDiv').style.display ='none';
+});
+
+$(function(){
+    $('.optRemote').click(function() {
+        document.getElementById('settingsInputDiv').style.display = 'block';
+    });
+});
+
+$(function(){
+    $('.optLocal').click(function() {
+        document.getElementById('settingsInputDiv').style.display = 'none';
+    });
+});
+
+*/
+
+</script>
+
 {% endblock %}
 
+
+
+
+
+
 {% block content %}
-<div class="form-group">
-  <form method="post">
+
+
+
+
+<!-- -->
+<center>
+  <br>
+  <h5> Lightning-rod status: {{ board_status }}</h5>
+</center>
+
+      {% if error %}
+        <br>
+        <h4><center>
+            <i class="material-icons" style="font-size:48px;color:red">warning</i>
+
+            <p class="error"><strong>Error:</strong> {{ error }}
+        </center></h4>
+      {% endif %}
+
+<br><br>
+
+{% if session['status'] == 'first_boot' %}
+
+  <div class="form-group">
+    <form method="post">
       <div class="form-group">
-    <label for="urlwagent">Registration Agent: </label>
-    <input  class="form-control" name="urlwagent" id="urlwagent"  value="{{ urlwagent }}"  required></div>
-    <div class="form-group"></div>
-    <label for="code">Registration Code:</label>
-    <input  class="form-control" name="code" id="code"  value="{{ code }}" required></div>
-    <input  class="btn btn-success" type="submit" value="CONFIGURE">
-  </form>
+        <label for="urlwagent">Registration Agent URL:</label>
+        <input  class="form-control" name="urlwagent" id="urlwagent"  value="{{ urlwagent }}"  required  placeholder="ws(s)://<WAGENT-ADDRESS>:<WAGENT-PORT>">
+      </div>
+      <div class="form-group">
+        <label for="code">Registration Code:</label>
+        <input class="form-control" name="code" id="code"  value="{{ code }}" required>
+      </div>
+      <input class="btn btn-success" type="submit" value="CONFIGURE" name="reg_btn">
+    </form>
+  </div>
+
+
+<br><br>
+<div class="d-flex">
+    <hr class="my-auto flex-grow-1">
+    <div class="px-4"> <h5> Settings management </h5></div>
+    <hr class="my-auto flex-grow-1">
 </div>
+<br>
+
+
+<table class="table table-hover">
+
+    <div class="form-group" align="center">
+        <form method="POST" action="/config">
+            <tr>
+                <td style="width:30%"> <input class="btn btn-warning btn-block" type="submit" value="Factory settings" name="fct_btn"> </td>
+                <td> Reload settings.json factory template. </td>
+            </tr>
+        </form>
+    </div>
+
+
+    <form method="POST" action="/config" enctype=multipart/form-data>
+
+        <tr>
+
+              <td style="width:30%"> <input class="btn btn-success btn-block" type="submit" value="Restore settings" name="rst_settings_btn"> </td>
+
+              <td>
+
+                  <div class="input-group">
+
+                    <div class="custom-file" id="settingsInputDivFirst">
+                      <input type="file" class="custom-file-input rst_settings_in" id="rst_settings_in_first" aria-describedby="inputGroupFileAddon01" name="rst_settings_file">
+                      <label class="custom-file-label rst_settings_lb" id="rst_settings_lb_first" style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" for="rst_settings_in_first">Select settings file...</label>
+                    </div>
+
+                      <!--
+                      &nbsp &nbsp
+
+                    <div class="btn-group btn-group-toggle" data-toggle="buttons">
+                      <label class="btn btn-secondary active optLocal">
+                        <input type="radio" name="options" id="option1" autocomplete="off" value="local" checked> Local
+                      </label>
+                      <label class="btn btn-secondary optRemote">
+                        <input type="radio" name="options" id="option2" autocomplete="off" value="remote"> Remote
+                      </label>
+
+                    </div>
+                    -->
+
+                  </div>
+
+              </td>
+
+        </tr>
+    </form>
+
+
+
+    <form method="POST" action="/restore" enctype=multipart/form-data>
+
+        <tr>
+
+          <td style="width:30%"> <input class="btn btn-success btn-block" type="submit" value="Device restore" name="dev_rst_btn"> </td>
+
+          <td>
+
+              <div class="input-group">
+                <div class="custom-file">
+                  <input type="file" class="custom-file-input dev_rst_in" id="dev_rst_in_first" aria-describedby="inputGroupFileAddon01" name="rst_file">
+                  <label class="custom-file-label dev_rst_lb" id="dev_rst_lb_first" style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" for="dev_rst_in_first">Select backup file...</label>
+                </div>
+              </div>
+
+          </td>
+
+        </tr>
+
+    </form>
+
+</table>
+
+
+{% else %}
+
+
+<br>
+
+<div class="d-flex">
+    <hr class="my-auto flex-grow-1">
+    <div class="px-4"> <h5> Settings management </h5></div>
+    <hr class="my-auto flex-grow-1">
+</div>
+<br>
+
+
+<div class="form-group" align="center">
+    <table class="table table-hover">
+
+        <form method="GET" action="/config">
+
+            <tr>
+              <td style="width:30%"> <input class="btn btn-success btn-block" type="submit" value="Backup settings" name="bkp_btn" id="bkp_btn"> </td>
+              <td> Backup settings.json file. </td>
+            </tr>
+
+        </form>
+
+
+
+        <form method="POST" action="/config" enctype=multipart/form-data>
+
+                <tr>
+
+                      <td style="width:30%"> <input class="btn btn-success btn-block" type="submit" value="Restore settings" name="rst_settings_btn"> </td>
+
+                      <td>
+
+                          <div class="input-group">
+
+                            <div class="custom-file"  id="settingsInputDiv">
+                              <input type="file" class="custom-file-input rst_settings_in" id="rst_settings_in" aria-describedby="inputGroupFileAddon01" name="rst_settings_file">
+                              <label class="custom-file-label rst_settings_lb" id="rst_settings_lb" style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" for="rst_settings_in">Select settings file...</label>
+                            </div>
+
+                              <!--
+                                &nbsp &nbsp
+
+                            <div class="btn-group btn-group-toggle" data-toggle="buttons">
+                              <label class="btn btn-secondary active optLocal" id="optLocal">
+                                <input type="radio" name="options" autocomplete="off" value="local" checked> Local
+                              </label>
+                              <label class="btn btn-secondary optRemote" id="optRemote">
+                                <input type="radio" name="options" autocomplete="off" value="remote"> Remote
+                              </label>
+
+                            </div>
+
+                              -->
+
+                          </div>
+
+                      </td>
+
+                </tr>
+
+        </form>
+
+
+
+        <form method="get" action="/config">
+
+            <tr>
+              <td style="width:30%"> <input class="btn btn-danger btn-block" type="submit" value="Factory settings" name="fct_btn"> </td>
+              <td> Load settings.json template. </td>
+            </tr>
+
+        </form>
+
+
+    </table>
+</div>
+
+
+
+<br><br>
+<div class="d-flex">
+    <hr class="my-auto flex-grow-1">
+    <div class="px-4"> <h5> Identity management </h5></div>
+    <hr class="my-auto flex-grow-1">
+</div>
+<br>
+
+
+<div class="form-group" align="center">
+
+    <table class="table table-hover">
+
+        <form method="GET" action="/backup">
+
+            <tr>
+              <td style="width:30%"> <input class="btn btn-success btn-block" type="submit" value="Device backup" name="dev_bkp_btn"> </td>
+              <td> Backup device identity. </td>
+            </tr>
+
+        </form>
+
+        <form method="POST" action="/restore" enctype=multipart/form-data>
+
+            <tr>
+
+              <td style="width:30%"> <input class="btn btn-success btn-block" type="submit" value="Device restore" name="dev_rst_btn"> </td>
+
+              <td>
+
+                  <div class="input-group">
+                    <div class="custom-file">
+                      <input type="file" class="custom-file-input dev_rst_in" id="dev_rst_in" aria-describedby="inputGroupFileAddon01" name="rst_file">
+                      <label class="custom-file-label dev_rst_lb" id="dev_rst_lb" style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" for="dev_rst_in">Select backup file...</label>
+                    </div>
+                  </div>
+
+              </td>
+
+            </tr>
+
+        </form>
+
+
+        <form method="GET" action="/factory">
+
+            <tr>
+              <td style="width:30%"> <input class="btn btn-danger btn-block" type="submit" value="Factory reset" name="dev_fct_btn"> </td>
+              <td> Reset device to factory setup: wipe all data!!! </td>
+            </tr>
+
+        </form>
+
+    </table>
+
+</div>
+{% endif %}
+
+
 {% endblock %}

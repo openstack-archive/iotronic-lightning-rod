@@ -1,20 +1,27 @@
 #!/bin/bash
 
-echo "Option chosen: "$1 $2
+echo "Option chosen: "$1
 
 
 if [ "$1" = "backup" ]; then
-        if [ "$#" -ne 1 ]; then
-                echo "You have to specify:  'restore' <BACKUP_FILE> "
-                exit
-        fi
-    	# BACKUP
-    	echo "Backing up Iotronic configuration"
-    	now_date=`date '+%Y%m%d%H%M%S'`
-    	device=`cat /etc/iotronic/settings.json | grep name | awk '{print $2}' | tr -d \" | tr -d ,`
-    	bkp_filename="bkp_"$device"_"$now_date".tar.gz"
-    	echo "-> backup filename: " $bkp_filename
-    	tar zcvf $bkp_filename /var/lib/iotronic /etc/iotronic /etc/letsencrypt /etc/nginx > /dev/null
+
+    if [ "$2" = "--path" ]; then
+
+        bkp_path=$3
+
+    else
+
+        bkp_path=""
+
+    fi
+
+    # BACKUP
+    echo "Backing up Iotronic configuration"
+    now_date=`date '+%Y%m%d%H%M%S'`
+    device=`cat /etc/iotronic/settings.json | grep name | awk '{print $2}' | tr -d \" | tr -d ,`
+    bkp_filename=$bkp_path"/bkp_"$device"_"$now_date".tar.gz"
+    echo "-> backup filename: " $bkp_filename
+    tar zcvf $bkp_filename /var/lib/iotronic /etc/iotronic /etc/letsencrypt /etc/nginx/conf.d &>/dev/null
 
 elif [ "$1" = "restore" ]; then
 	if [ "$#" -ne 2 ]; then

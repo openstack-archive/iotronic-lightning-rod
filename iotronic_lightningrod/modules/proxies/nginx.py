@@ -207,10 +207,13 @@ class ProxyManager(Proxy.Proxy):
 
             nginx_path = "/etc/nginx/conf.d/"
 
-            nginx_board_conf_file = nginx_path + "/" + board_dns + ".conf"
+            nginx_board_conf_file = nginx_path + "/lr_" + board_dns + ".conf"
             nginx_board_conf = '''server {{
                 listen              50000;
                 server_name    {0};
+                location / {{
+                    proxy_pass http://127.0.0.1:1474;
+                }}
             }}
             '''.format(board_dns)
 
@@ -233,6 +236,7 @@ class ProxyManager(Proxy.Proxy):
                       "--email " + owner_email
 
             LOG.debug(command)
+
             certbot_result = call(command, shell=True)
             LOG.info("CERTBOT RESULT: " + str(certbot_result))
 
@@ -255,7 +259,7 @@ class ProxyManager(Proxy.Proxy):
 
             nginx_path = "/etc/nginx/conf.d"
 
-            service_path = nginx_path + "/" + service_dns + ".conf"
+            service_path = nginx_path + "/lr_" + service_dns + ".conf"
             string = '''server {{
             listen              50000;
             server_name         {0};
@@ -293,6 +297,7 @@ class ProxyManager(Proxy.Proxy):
                       "--tls-sni-01-port 60000 " \
                       "--domain " + str(dns_list)
 
+            """
             command = "/usr/bin/certbot " \
                       "-n " \
                       "--redirect " \
@@ -301,6 +306,7 @@ class ProxyManager(Proxy.Proxy):
                       "--cert-name " + str(board_dns) + " " \
                       "--tls-sni-01-port 60000 " \
                       "--domain " + str(dns_list)
+            """
 
             LOG.debug(command)
             certbot_result = call(command, shell=True)
@@ -335,7 +341,7 @@ class ProxyManager(Proxy.Proxy):
         try:
 
             nginx_path = "/etc/nginx/conf.d"
-            service_path = nginx_path + "/" + service_dns + ".conf"
+            service_path = nginx_path + "/lr_" + service_dns + ".conf"
 
             if os.path.exists(service_path):
 

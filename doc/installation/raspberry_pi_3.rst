@@ -80,3 +80,13 @@ Execution:
     systemctl start lightning-rod.service
 
     tail -f /var/log/iotronic/lightning-rod.log
+
+
+Troubleshooting:
+~~~~~~~~~~~~~~~~
+- **cbor error:** "Connection failed: RuntimeError: could not create serializer for "cbor"
+
+   It is a dependency of Autobahn package
+
+ **Solution:**
+   pip3 install cbor

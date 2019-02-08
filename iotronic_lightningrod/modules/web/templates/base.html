@@ -1,7 +1,15 @@
 <!doctype html>
 <title>{% block title %}{% endblock %} - LR</title>
+
+<script src="{{ url_for('static', filename='js/jquery.min.js') }}"></script>
+
 <link rel="stylesheet" href="{{ url_for('static', filename='css/bootstrap.min.css') }}">
 <script src="{{ url_for('static', filename='js/bootstrap.min.js') }}"></script>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+
+
+
 <meta name="viewport" content="width=device-width, initial-scale=1">
 
 <div class="container">
@@ -10,8 +18,10 @@
           <li class="nav-item">
               <a class="navbar-brand"  href="/">Home</a>
               <a class="navbar-brand"  href="/status">Status</a>
+              <a class="navbar-brand"  href="/system">System</a>
               <a class="navbar-brand"  href="/network">Network</a>
-
+              <a class="navbar-brand"  href="/config">Configuration</a>
+              <a class="navbar-brand"  href="/logout">Logout</a>
           </li>
         </ul>
       </nav>

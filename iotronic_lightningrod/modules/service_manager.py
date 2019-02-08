@@ -68,7 +68,7 @@ s_conf_FILE = CONF.lightningrod_home + "/services.json"
 
 ws_server_alive = 0
 
-
+global WS_MON_LIST
 WS_MON_LIST = {}
 
 global wstun_ip
@@ -103,6 +103,19 @@ class ServiceManager(Module.Module):
             self.wstun_url = "ws://" + self.wstun_ip + ":" + self.wstun_port
 
     def finalize(self):
+
+        # Clean process table and remove zombies
+        for _ in range(get_zombies()):
+            try:
+                os.waitpid(-1, os.WNOHANG)
+            except Exception as exc:
+                print(" - [finalize] Error cleaning" +
+                      " wstun zombie process: " + str(exc))
+
+        message = "WSTUN zombie processes cleaned."
+        LOG.debug(message)
+        print(message)
+
         LOG.info("Cloud service tunnels to initialization:")
 
         # Load services.json configuration file
@@ -195,8 +208,22 @@ class ServiceManager(Module.Module):
                                     )
 
                                     try:
+
                                         os.kill(service_pid, signal.SIGINT)
                                         print("OLD WSTUN KILLED: " + str(wp))
+
+                                        try:
+                                            os.waitpid(-1, os.WNOHANG)
+                                            print(" - OLD wstun zombie "
+                                                  "process cleaned.")
+                                        except Exception as exc:
+                                            print(
+                                                " - [finalize] " +
+                                                "Error cleaning old " +
+                                                "wstun zombie process: " +
+                                                str(exc)
+                                            )
+
                                         LOG.info(
                                             " --> service '" + service_name
                                             + "' with PID " + str(service_pid)
@@ -334,6 +361,7 @@ class ServiceManager(Module.Module):
                                 (p.status() == psutil.STATUS_ZOMBIE)):
                             print(" - process: " + str(p))
                             zombie_list.append(p.pid)
+
             except Exception as e:
                 LOG.error(
                     " --> PSUTIL [_zombie_hunter]: " +
@@ -360,6 +388,12 @@ class ServiceManager(Module.Module):
 
                 for s_uuid in s_conf['services']:
 
+                    # Reload services.json file in order to check
+                    # again if the PID was updated in the mean time
+                    # by another zombie-hunter instance, before starting
+                    # another instance of wstun
+                    s_conf = self._loadServicesConf()
+
                     service_pid = s_conf['services'][s_uuid]['pid']
 
                     if service_pid in zombie_list:
@@ -371,6 +405,7 @@ class ServiceManager(Module.Module):
                         wstun_found = True
 
                         print(s_conf['services'][s_uuid])
+
                         service_public_port = \
                             s_conf['services'][s_uuid]['public_port']
                         service_local_port = \
@@ -380,6 +415,14 @@ class ServiceManager(Module.Module):
 
                         try:
 
+                            # Clean Zombie wstun process
+                            try:
+                                os.waitpid(-1, os.WNOHANG)
+                                print(" - WSTUN zombie process cleaned.")
+                            except Exception as exc:
+                                print(" - [hunter] Error cleaning wstun " +
+                                      "zombie process: " + str(exc))
+
                             wstun = self._startWstun(
                                 service_public_port,
                                 service_local_port,
@@ -387,6 +430,7 @@ class ServiceManager(Module.Module):
                             )
 
                             if wstun != None:
+
                                 service_pid = wstun.pid
 
                                 # UPDATE services.json file
@@ -408,8 +452,14 @@ class ServiceManager(Module.Module):
                                           + " restored on port " \
                                           + str(service_public_port) \
                                           + " on " + self.wstun_ip
+
                                 LOG.info(" - " + message
                                          + " with PID " + str(service_pid))
+                            else:
+                                message = "No need to spawn new tunnel for " \
+                                          + str(service_local_port) + " port"
+                                LOG.debug(message)
+                                print(message)
 
                         except Exception:
                             pass
@@ -422,9 +472,18 @@ class ServiceManager(Module.Module):
                     # LOG.debug("[WSTUN-RESTORE] --> " + str(message))
 
         else:
-            print("WSTUN kill event:")
-            message = "Tunnel killed by LR"
+            print("\nWSTUN kill event:")
+            message = "Tunnel killed by LR."
             print(" - " + str(message))
+
+            # Clean zombie processes (no wstun)
+            try:
+                os.waitpid(-1, os.WNOHANG)
+                print(" - Generic zombie process cleaned.")
+            except Exception as exc:
+                print(" - [hunter] Error cleaning "
+                      "generic zombie process: " + str(exc))
+
             # LOG.debug("[WSTUN-RESTORE] --> " + str(message))
             # lightningrod.zombie_alert = True
 
@@ -604,6 +663,27 @@ class ServiceManager(Module.Module):
                 local_port)
 
             try:
+                for p in psutil.process_iter():
+                    if len(p.cmdline()) != 0:
+                        if ((p.name() == "node") and
+                                (str(local_port) in p.cmdline()[2])):
+                            old_tun = p.cmdline()[2]
+                            if old_tun == opt_reverse:
+                                message = "[_startWstun] Tunnel for port " \
+                                    + str(local_port) \
+                                    + " already established!"
+                                print(message)
+                                LOG.warning(message)
+                                return None
+
+            except Exception as e:
+                LOG.error(
+                    " --> PSUTIL [_startWstun]: " +
+                    "error getting wstun processes info: " + str(e)
+                )
+
+            try:
+
                 wstun = subprocess.Popen(
                     [CONF.services.wstun_bin, opt_reverse, self.wstun_url],
                     stdout=subprocess.PIPE
@@ -653,6 +733,26 @@ class ServiceManager(Module.Module):
 
         opt_reverse = "-r" + str(public_port) + ":127.0.0.1:" + str(
             local_port)
+
+        try:
+            for p in psutil.process_iter():
+                if len(p.cmdline()) != 0:
+                    if ((p.name() == "node") and
+                            (str(local_port) in p.cmdline()[2])):
+                        old_tun = p.cmdline()[2]
+                        if old_tun == opt_reverse:
+                            message = "[_startWstunOnBoot] Tunnel for port " \
+                                      + str(local_port) \
+                                      + " already established!"
+                            print(message)
+                            LOG.warning(message)
+                            return None
+
+        except Exception as e:
+            LOG.error(
+                " --> PSUTIL [_startWstunOnBoot]: " +
+                "error getting wstun processes info: " + str(e)
+            )
 
         try:
             wstun = subprocess.Popen(
@@ -1049,6 +1149,13 @@ class ServiceManager(Module.Module):
                     w_msg = WM.WampError(message)
 
         return w_msg.serialize()
+
+
+def get_zombies():
+    # NOTE: don't use Popen() here
+    output = os.popen(r"ps aux | grep ' Z' | grep -v grep").read()
+    nzombies = len(output.splitlines())
+    return nzombies
 
 
 def services_list():

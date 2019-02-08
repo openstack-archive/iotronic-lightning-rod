@@ -4,6 +4,38 @@
   <h1>{% block title %}Welcome in Lightning-rod{% endblock %}</h1>
 {% endblock %}
 
+
 {% block content %}
+
+  {% if session['status'] == 'restarting' %}
+
+    <head>
+        <meta http-equiv="refresh" content="10;url=/status" />
+    </head>
+
+      <br>
+    <div align="center">
+
+      Waiting for restarting in 10 seconds...
+    </div>
+
+  {% elif session['status'] == 'starting' %}
+
+    <head>
+        <meta http-equiv="refresh" content="10;url=/status" />
+    </head>
+
+      <br>
+    <div align="center">
+
+      Waiting for starting in 10 seconds...
+    </div>
+
+  {% else %}
+
+    <div align="center"> </div>
+
+  {% endif %}
+
 
 {% endblock %}

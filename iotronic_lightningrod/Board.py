@@ -17,7 +17,6 @@ __author__ = "Nicola Peditto <n.peditto@gmail.com>"
 
 from datetime import datetime
 import json
-import os
 
 from oslo_config import cfg
 from oslo_log import log as logging
@@ -131,7 +130,8 @@ class Board(object):
 
             except Exception as err:
                 LOG.error("Wrong code: " + str(err))
-                os._exit(1)
+                self.status = "first_boot"
+                # os._exit(1)
 
     def getWampAgent(self, config):
         '''This method gets and sets the WAMP Board attributes from the conf file.
@@ -153,7 +153,8 @@ class Board(object):
                     "WAMP Agent configuration is wrong... "
                     "please check settings.json WAMP configuration... Bye!"
                 )
-                os._exit(1)
+                # os._exit(1)
+                self.status = "first_boot"
 
         # self.agent_url = str(self.wamp_config['url'])
         LOG.info(' - agent: ' + str(self.agent))

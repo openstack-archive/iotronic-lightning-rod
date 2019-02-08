@@ -23,8 +23,11 @@ LOG = logging.getLogger(__name__)
 import os
 import pkg_resources
 import psutil
+import site
 import subprocess
 import sys
+import threading
+import time
 
 
 def LR_restart():
@@ -34,6 +37,16 @@ def LR_restart():
         os.execl(python, python, *sys.argv)
     except Exception as err:
         LOG.error("Lightning-rod restarting error" + str(err))
+
+
+def LR_restart_delayed(seconds):
+
+    def delayLRrestarting():
+        time.sleep(seconds)
+        python = sys.executable
+        os.execl(python, python, *sys.argv)
+
+    threading.Thread(target=delayLRrestarting).start()
 
 
 def checkIotronicConf(lr_CONF):
@@ -84,3 +97,69 @@ def get_version(package):
     package = package.lower()
     return next((p.version for p in pkg_resources.working_set if
                  p.project_name.lower() == package), "No version")
+
+
+def get_socket_info(wport):
+    lr_mac = "N/A"
+
+    try:
+        for socks in psutil.Process().connections():
+            if len(socks.raddr) != 0:
+                if (socks.raddr.port == wport):
+                    lr_net_iface = socks
+                    print("WAMP SOCKET: " + str(lr_net_iface))
+                    dct = psutil.net_if_addrs()
+                    for key in dct.keys():
+                        if isinstance(dct[key], dict) == False:
+                            iface = key
+                            for elem in dct[key]:
+                                ip_addr = elem.address
+                                if ip_addr == str(
+                                        lr_net_iface.laddr.ip):
+                                    for snicaddr in dct[iface]:
+                                        if snicaddr.family == 17:
+                                            lr_mac = snicaddr.address
+                                            print(" - Selected NIC: ", iface,
+                                                  ip_addr,
+                                                  lr_mac)
+
+                                            return [iface, ip_addr, lr_mac]
+    except Exception as e:
+        LOG.warning("Error getting socket info " + str(e))
+        lr_mac = "N/A"
+        return lr_mac
+
+    return lr_mac
+
+
+def backupConf():
+    try:
+        os.system(
+            'cp /etc/iotronic/settings.json /etc/iotronic/settings.json.bkp'
+        )
+    except Exception as e:
+        LOG.warning("Error restoring configuration " + str(e))
+
+
+def restoreConf():
+    try:
+        result = os.system(
+            'cp /etc/iotronic/settings.json.bkp /etc/iotronic/settings.json'
+        )
+    except Exception as e:
+        LOG.warning("Error restoring configuration " + str(e))
+        result = str(e)
+
+    return result
+
+
+def restoreFactoryConf():
+    try:
+        py_dist_pack = site.getsitepackages()[0]
+        os.system(
+            'cp ' + py_dist_pack + '/iotronic_lightningrod/'
+            + 'templates/settings.example.json '
+            + '/etc/iotronic/settings.json'
+        )
+    except Exception as e:
+        LOG.warning("Error restoring configuration " + str(e))

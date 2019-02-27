@@ -10,7 +10,7 @@ Requirements
 
 ::
 
-   apt install python3 python3-setuptools python3-pip gdb lsof
+   apt install python3 python3-setuptools python3-pip gdb lsof libssl-dev libffi-dev libffi-dev
 
 * NodeJS
 
@@ -35,6 +35,8 @@ Requirements
 
     apt install -y nginx
     sed -i 's/# server_names_hash_bucket_size 64;/server_names_hash_bucket_size 64;/g' /etc/nginx/nginx.conf
+    sed -i "s|listen 80 default_server;|listen 50000 default_server;|g" /etc/nginx/sites-available/default
+    sed -i "s|80 default_server;|50000 default_server;|g" /etc/nginx/sites-available/default
 
 * Certbot
 
@@ -55,15 +57,34 @@ Iotronic deployment
 
     lr_install
 
+Execution:
+~~~~~~~~~~
+::
+
+    systemctl start lightning-rod.service
+
+    tail -f /var/log/iotronic/lightning-rod.log
 
 Iotronic setup
 ''''''''''''''
+- Web-UI configuration:
+
+::
+
+    http://<BOARD-IP>:1474/config
+
+Registration Agent URL: ws(s)://<IOTRONIC-CROSSBAR-IP>:<IOTRONIC-CROSSBAR-PORT>/
+Registration Code: <REGISTRATION-CODE>
+
+
+- Manual configuration (first registration only)
+
 ::
 
     lr_configure
 
 Arguments required:
-   * <REGISTRATION-TOKEN> , token released by IoTronic registration procedure
+   * <REGISTRATION-CODE> , token released by IoTronic registration procedure
    * <WAMP-REG-AGENT-URL> , IoTronic Crossbar server WAMP URL:
 
    ws(s)://<IOTRONIC-CROSSBAR-IP>:<IOTRONIC-CROSSBAR-PORT>/
@@ -73,15 +94,6 @@ e.g.
 
     lr_configure <REGISTRATION-TOKEN> <WAMP-REG-AGENT-URL>
 
-Execution:
-~~~~~~~~~~
-::
-
-    systemctl start lightning-rod.service
-
-    tail -f /var/log/iotronic/lightning-rod.log
-
-
 Troubleshooting:
 ~~~~~~~~~~~~~~~~
 - **cbor error:** "Connection failed: RuntimeError: could not create serializer for "cbor"
@@ -89,4 +101,4 @@ Troubleshooting:
    It is a dependency of Autobahn package
 
  **Solution:**
-   pip3 install cbor
+   pip3 install cborregistration only)

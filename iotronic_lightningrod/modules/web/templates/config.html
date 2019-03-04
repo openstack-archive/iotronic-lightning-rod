@@ -98,6 +98,46 @@ $(function(){
 
 
 <br><br>
+
+<div class="d-flex">
+    <hr class="my-auto flex-grow-1">
+    <div class="px-4"> <h5> Restore identity </h5></div>
+    <hr class="my-auto flex-grow-1">
+</div>
+<br>
+
+<div class="form-group" align="center">
+
+    <table class="table table-hover">
+
+
+        <form method="POST" action="/restore" enctype=multipart/form-data>
+
+            <tr>
+
+              <td style="width:30%"> <input class="btn btn-success btn-block" type="submit" value="Device restore" name="dev_rst_btn"> </td>
+
+              <td>
+
+                  <div class="input-group">
+                    <div class="custom-file">
+                      <input type="file" class="custom-file-input dev_rst_in" id="dev_rst_in" aria-describedby="inputGroupFileAddon01" name="rst_file">
+                      <label class="custom-file-label dev_rst_lb" id="dev_rst_lb" style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" for="dev_rst_in">Select backup file...</label>
+                    </div>
+                  </div>
+
+              </td>
+
+            </tr>
+
+        </form>
+
+    </table>
+
+</div>
+
+<!--
+
 <div class="d-flex">
     <hr class="my-auto flex-grow-1">
     <div class="px-4"> <h5> Settings management </h5></div>
@@ -133,19 +173,6 @@ $(function(){
                       <label class="custom-file-label rst_settings_lb" id="rst_settings_lb_first" style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" for="rst_settings_in_first">Select settings file...</label>
                     </div>
 
-                      <!--
-                      &nbsp &nbsp
-
-                    <div class="btn-group btn-group-toggle" data-toggle="buttons">
-                      <label class="btn btn-secondary active optLocal">
-                        <input type="radio" name="options" id="option1" autocomplete="off" value="local" checked> Local
-                      </label>
-                      <label class="btn btn-secondary optRemote">
-                        <input type="radio" name="options" id="option2" autocomplete="off" value="remote"> Remote
-                      </label>
-
-                    </div>
-                    -->
 
                   </div>
 
@@ -179,9 +206,12 @@ $(function(){
 
 </table>
 
+-->
+
 
 {% else %}
 
+<!--
 
 <br>
 
@@ -194,6 +224,7 @@ $(function(){
 
 
 <div class="form-group" align="center">
+
     <table class="table table-hover">
 
         <form method="GET" action="/config">
@@ -222,21 +253,6 @@ $(function(){
                               <label class="custom-file-label rst_settings_lb" id="rst_settings_lb" style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" for="rst_settings_in">Select settings file...</label>
                             </div>
 
-                              <!--
-                                &nbsp &nbsp
-
-                            <div class="btn-group btn-group-toggle" data-toggle="buttons">
-                              <label class="btn btn-secondary active optLocal" id="optLocal">
-                                <input type="radio" name="options" autocomplete="off" value="local" checked> Local
-                              </label>
-                              <label class="btn btn-secondary optRemote" id="optRemote">
-                                <input type="radio" name="options" autocomplete="off" value="remote"> Remote
-                              </label>
-
-                            </div>
-
-                              -->
-
                           </div>
 
                       </td>
@@ -260,6 +276,7 @@ $(function(){
     </table>
 </div>
 
+-->
 
 
 <br><br>

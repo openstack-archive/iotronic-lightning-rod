@@ -68,6 +68,7 @@ def destroyWampSocket():
     LR_PID = os.getpid()
 
     try:
+
         process = subprocess.Popen(
             ["gdb", "-p", str(LR_PID)],
             stdin=subprocess.PIPE,
@@ -75,18 +76,33 @@ def destroyWampSocket():
         )
 
         proc = psutil.Process()
-        print("WAMP RECOVERY: " + str(proc.connections()[0]))
 
-        ws_fd = proc.connections()[0].fd
-        first = b"call ((void(*)()) shutdown)("
-        fd = str(ws_fd).encode('ascii')
-        last = b"u,0)\nquit\ny"
-        commands = b"%s%s%s" % (first, fd, last)
-        process.communicate(input=commands)[0]
+        conn_list = proc.connections()
+        proc_msg = "WAMP RECOVERY: " + str(conn_list)
+        print(proc_msg)
+        LOG.info(proc_msg)
 
-        msg = "Websocket-Zombie closed! Restoring..."
-        LOG.warning(msg)
-        print(msg)
+        for socks in conn_list:
+            # print(socks.raddr, socks.fd)
+            if socks.raddr != ():
+                # print(socks.raddr.port, socks.fd)
+                socks_msg = "FD selected: " + str(socks.fd) \
+                            + " [port " + str(socks.raddr.port) + "]"
+
+                print(socks_msg)
+                LOG.info(socks_msg)
+
+                ws_fd = socks.fd
+                first = b"call ((void(*)()) shutdown)("
+                fd = str(ws_fd).encode('ascii')
+                last = b"u,0)\nquit\ny"
+                commands = b"%s%s%s" % (first, fd, last)
+                process.communicate(input=commands)[0]
+
+                msg = "Websocket-Zombie closed! Restoring..."
+                LOG.warning(msg)
+                print(msg)
+                break
 
     except Exception as e:
         LOG.warning("RPC-ALIVE - destroyWampSocket error: " + str(e))

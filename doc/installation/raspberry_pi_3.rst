@@ -1,7 +1,7 @@
-IoTronic Lightning-rod installation guide for Raspberry Pi 2/3
-==============================================================
+IoTronic Lightning-rod installation guide for Raspberry Pi
+==========================================================
 
-We tested this procedure on a Raspberry Pi 2/3 board (Raspbian).
+We tested this procedure on a Raspberry Pi boards (Raspbian).
 
 Requirements
 ~~~~~~~~~~~~
@@ -57,8 +57,8 @@ Iotronic deployment
 
     lr_install
 
-Execution:
-~~~~~~~~~~
+Execution
+~~~~~~~~~
 ::
 
     systemctl start lightning-rod.service
@@ -66,33 +66,26 @@ Execution:
     tail -f /var/log/iotronic/lightning-rod.log
 
 Iotronic setup
-''''''''''''''
-- Web-UI configuration:
+~~~~~~~~~~~~~~
 
+**Web-UI url:**
 ::
 
     http://<BOARD-IP>:1474/config
 
-Registration Agent URL: ws(s)://<IOTRONIC-CROSSBAR-IP>:<IOTRONIC-CROSSBAR-PORT>/
-Registration Code: <REGISTRATION-CODE>
+There you need to provide the following information:
+
+- **Registration Agent URL:** ws(s)://<IOTRONIC-CROSSBAR-IP>:<IOTRONIC-CROSSBAR-PORT>/
+
+    It is the url used to reach Iotronic registration agent (provided by the infrastructure): you have specify the IP address/domain name followed by the port (crossbar listening port, e.g. 8181)
 
 
-- Manual configuration (first registration only)
+- **Registration Code:** <REGISTRATION-CODE>
 
-::
+    It is the code specified during the device registration to identify it (the first time).
 
-    lr_configure
 
-Arguments required:
-   * <REGISTRATION-CODE> , token released by IoTronic registration procedure
-   * <WAMP-REG-AGENT-URL> , IoTronic Crossbar server WAMP URL:
 
-   ws(s)://<IOTRONIC-CROSSBAR-IP>:<IOTRONIC-CROSSBAR-PORT>/
-
-e.g.
-::
-
-    lr_configure <REGISTRATION-TOKEN> <WAMP-REG-AGENT-URL>
 
 Troubleshooting:
 ~~~~~~~~~~~~~~~~
@@ -101,4 +94,4 @@ Troubleshooting:
    It is a dependency of Autobahn package
 
  **Solution:**
-   pip3 install cborregistration only)
+   pip3 install cbor

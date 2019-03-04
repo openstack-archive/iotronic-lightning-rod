@@ -208,7 +208,8 @@ class RestManager(Module.Module):
             return output.decode('ascii').strip()
 
         def identity_restore(filepath):
-            bashCommand = "device_bkp_rest restore " + filepath + "| tail -n 1"
+            bashCommand = "device_bkp_rest restore " \
+                          + str(filepath) + "| tail -n 1"
             process = subprocess.Popen(bashCommand,
                                        stdout=subprocess.PIPE, shell=True)
             output, error = process.communicate()
@@ -227,7 +228,8 @@ class RestManager(Module.Module):
         @app.route('/restore', methods=['GET', 'POST'])
         def upload_file():
 
-            if 'username' in f_session:
+            if ('username' in f_session) or str(board.status) == "first_boot":
+
                 f_session['status'] = str(board.status)
 
                 if request.form.get('dev_rst_btn') == 'Device restore':
@@ -268,7 +270,14 @@ class RestManager(Module.Module):
                                     app.config['UPLOAD_FOLDER'],
                                     filename
                                 )
+
+                                bpath = bpath.replace(" ", "")
+                                bpath = bpath.replace("(", "-")
+                                bpath = bpath.replace(")", "-")
+
+                                print("--> storage path: " + str(bpath))
                                 file.save(bpath)
+
                                 out_res = identity_restore(bpath)
                                 print("--> restore result: " + str(out_res))
                                 # restart LR

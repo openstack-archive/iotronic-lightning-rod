@@ -12,7 +12,7 @@ RUN sed -i 's/# server_names_hash_bucket_size 64;/server_names_hash_bucket_size 
 
 RUN rm -rf /var/lib/apt/lists/*
 
-RUN npm install -g --unsafe @mdslab/wstun@1.0.9 && npm cache --force clean
+RUN npm install -g --unsafe @mdslab/wstun@1.0.10 && npm cache --force clean
 
 RUN pip3 install iotronic-lightningrod
 

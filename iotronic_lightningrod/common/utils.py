@@ -82,27 +82,37 @@ def destroyWampSocket():
         print(proc_msg)
         LOG.info(proc_msg)
 
+        wamp_conn_set = False
+
         for socks in conn_list:
             # print(socks.raddr, socks.fd)
             if socks.raddr != ():
                 # print(socks.raddr.port, socks.fd)
-                socks_msg = "FD selected: " + str(socks.fd) \
-                            + " [port " + str(socks.raddr.port) + "]"
+                if socks.raddr.port == 8181:
+                    socks_msg = "FD selected: " + str(socks.fd) \
+                                + " [port " + str(socks.raddr.port) + "]"
 
-                print(socks_msg)
-                LOG.info(socks_msg)
+                    print(socks_msg)
+                    LOG.info(socks_msg)
 
-                ws_fd = socks.fd
-                first = b"call ((void(*)()) shutdown)("
-                fd = str(ws_fd).encode('ascii')
-                last = b"u,0)\nquit\ny"
-                commands = b"%s%s%s" % (first, fd, last)
-                process.communicate(input=commands)[0]
+                    ws_fd = socks.fd
+                    first = b"call ((void(*)()) shutdown)("
+                    fd = str(ws_fd).encode('ascii')
+                    last = b"u,0)\nquit\ny"
+                    commands = b"%s%s%s" % (first, fd, last)
+                    process.communicate(input=commands)[0]
 
-                msg = "Websocket-Zombie closed! Restoring..."
-                LOG.warning(msg)
-                print(msg)
-                break
+                    msg = "Websocket-Zombie closed! Restoring..."
+                    LOG.warning(msg)
+                    print(msg)
+                    # WAMP connection found!
+                    wamp_conn_set = True
+                    # LOG.info("WAMP CONNECTION FOUND")
+
+        if wamp_conn_set == False:
+            LOG.warning("WAMP CONNECTION NOT FOUND: LR restarting...")
+            # In conn_list there is not the WAMP connection!
+            LR_restart()
 
     except Exception as e:
         LOG.warning("RPC-ALIVE - destroyWampSocket error: " + str(e))
@@ -116,6 +126,7 @@ def get_version(package):
 
 
 def get_socket_info(wport):
+
     lr_mac = "N/A"
 
     try:
@@ -135,11 +146,8 @@ def get_socket_info(wport):
                                     for snicaddr in dct[iface]:
                                         if snicaddr.family == 17:
                                             lr_mac = snicaddr.address
-                                            print(" - Selected NIC: ", iface,
-                                                  ip_addr,
-                                                  lr_mac)
-
                                             return [iface, ip_addr, lr_mac]
+
     except Exception as e:
         LOG.warning("Error getting socket info " + str(e))
         lr_mac = "N/A"

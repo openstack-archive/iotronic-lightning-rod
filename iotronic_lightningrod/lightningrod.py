@@ -78,8 +78,8 @@ CONF.register_opts(lr_opts)
 global SESSION
 SESSION = None
 
-global lr_mac
-lr_mac = None
+global lr_cty
+lr_cty = {}
 
 global wport
 wport = None
@@ -318,7 +318,7 @@ async def IotronicLogin(board, session, details):
                 session=details.session,
                 info={
                     "lr_version": str(get_version("iotronic-lightningrod")),
-                    "mac_addr": str(lr_mac)
+                    "connectivity": lr_cty
                 }
 
             )
@@ -399,6 +399,7 @@ def wampConnect(wamp_conf):
             wamp_transport = [
                 {
                     "url": wamp_transport,
+                    "max_retries": -1,
                     "serializers": ["json"],
                     "endpoint": {
                         "type": "tcp",
@@ -434,13 +435,16 @@ def wampConnect(wamp_conf):
             """
 
             global wport
-            global lr_mac
+            global lr_cty
             sock_bundle = get_socket_info(wport)
 
             if sock_bundle == "N/A":
-                lr_mac = sock_bundle
+                lr_cty = sock_bundle
             else:
-                lr_mac = sock_bundle[2]
+                lr_cty['iface'] = sock_bundle[0]
+                lr_cty['local_ip'] = sock_bundle[1]
+                lr_cty['mac'] = sock_bundle[2]
+                print(" - Selected NIC: " + str(lr_cty))
 
             global connected
             connected = True
@@ -622,7 +626,7 @@ def wampConnect(wamp_conf):
                             info={
                                 "lr_version": str(
                                     get_version("iotronic-lightningrod")),
-                                "mac_addr": str(lr_mac)
+                                "connectivity": lr_cty
                             }
 
                         )
